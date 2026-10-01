@@ -1,4 +1,7 @@
 # Mwandishi Export Backend (FastAPI)
+=======
+## Mwandishi AI Export Backend (FastAPI)
+>>>>>>> e7a1089166b983616447f3e644071b26110e90bf
 
 Real files generated server-side — no browser print dialog.
 

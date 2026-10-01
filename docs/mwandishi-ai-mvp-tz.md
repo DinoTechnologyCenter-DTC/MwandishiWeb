@@ -1,4 +1,4 @@
-# Mwandishi MVP Scope — Tanzania First
+# Mwandishi AI MVP Scope — Tanzania First
 
 > Companion to `mrcv-features.md`. This is the build order. If it is not in P0, do not build it for launch.
 
