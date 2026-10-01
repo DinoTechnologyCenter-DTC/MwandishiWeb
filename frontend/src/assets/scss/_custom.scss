@@ -80,14 +80,14 @@
 .topbar {
 	height: 60px;
 	margin-left: 240px;
-	// transition: margin-left .3s;
+	transition: margin-left .3s ease;
 }
 .topbar.full {
 	margin-left: 60px;
 }
 .content {
 	margin-left: 240px;
-	// transition: margin-left .3s;
+	transition: margin-left .3s ease;
 	// padding: 20px;
 }
 .content.full {
@@ -115,7 +115,7 @@
 @import "./icon-shape";
 @import "./utilities";
 
-// MrCV template previews
+// Mwandishi template previews
 .cv-mock {
   background: $gray-100;
   border: 1px solid $gray-200;
@@ -149,7 +149,7 @@
   flex-shrink: 0;
 }
 
-// MrCV live CV preview sheet (ATS-clean, single column)
+// Mwandishi live CV preview sheet (ATS-clean, single column)
 .cv-sheet {
   --cv-accent: #E66239;
   --cv-font: 'Poppins', sans-serif;
@@ -179,7 +179,7 @@
 .tpl-banking { --cv-accent: #E66239; }
 .tpl-graduate .cv-name { color: var(--cv-accent); }
 .tpl-general .cv-sec { border-bottom: none; border-left: 4px solid var(--cv-accent); padding-left: 8px; }
-// Professional Two-Column (converted from ODT pro layout): teal accent,
+// Professional Two-Column: teal accent,
 // header spans both columns, sections flow newspaper-style. Best printed
 // or emailed as PDF — use an ATS-clean template for job portals.
 .tpl-clinical { --cv-accent: #244655; }
@@ -188,16 +188,32 @@
 .tpl-clinical .cv-name { color: var(--cv-accent); }
 .tpl-clinical .cv-sec { break-inside: avoid; }
 .tpl-clinical .cv-item { break-inside: avoid; }
+// Exact replica: fixed photo rail + main column, two-tone name
+.tpl-exact { --cv-accent: #244655; }
+.tpl-exact .cv-exact-cols { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; }
+.tpl-exact .cv-exact-rail { background: #EFEDEA; border-radius: 6px; padding: 14px 12px; }
+.tpl-exact .cv-exact-photoWrap { text-align: center; margin-bottom: 10px; }
+.tpl-exact .cv-exact-photo { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; }
+.tpl-exact .cv-exact-initials { display: inline-flex; align-items: center; justify-content: center; width: 110px; height: 110px; border-radius: 50%; background: var(--cv-accent); color: #fff; font-size: 34px; font-weight: 700; }
+.tpl-exact .cv-exact-sec { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--cv-accent); margin: 12px 0 6px; }
+.tpl-exact .cv-exact-line { font-size: 12px; margin-bottom: 3px; word-break: break-word; }
+.tpl-exact .cv-exact-name { font-size: 30px; line-height: 1.1; margin-bottom: 2px; }
+.tpl-exact .cv-exact-name .first { color: $gray-900; font-weight: 400; }
+.tpl-exact .cv-exact-name .last { color: var(--cv-accent); font-weight: 700; }
+.tpl-exact .cv-exact-role { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.tpl-exact .cv-item { break-inside: avoid; }
 // Application letter layout
 .tpl-letter .lt-date { text-align: right; color: $gray-500; }
 .tpl-letter p { margin-bottom: 8px; }
 .theme-swatch { border: 2px solid transparent; }
 .theme-swatch.active { outline: 2px solid $primary; outline-offset: 2px; }
 
-// MrCV AI chat interface (Claude-style surface, no card)
-.chat-log { max-height: 70vh; overflow-y: auto; background: transparent; }
+// Mwandishi AI chat interface (Claude-style surface, no card)
+.chat-log { background: transparent; }
 .chat-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba($primary, .12); color: $primary; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
 .bubble-bot { background: transparent; border: none; padding: 2px; max-width: 92%; font-size: .9rem; }
+.bubble-bot ol { margin: 6px 0 6px 20px; padding: 0; }
+.bubble-bot li { margin-bottom: 3px; }
 .bubble-user { background: $primary; color: #fff; border-radius: 12px 12px 4px 12px; padding: 8px 14px; max-width: 85%; font-size: .9rem; }
 .chat-inputbar { position: sticky; bottom: 0; }
 .typing span { display: inline-block; width: 6px; height: 6px; margin-right: 3px; border-radius: 50%; background: $gray-400; animation: tblink 1s infinite; }
@@ -207,7 +223,7 @@
 
 // AI demo layout: preview column sheet stays readable at any width
 
-// MrCV dark theme: adapt template chrome (Bootstrap handles the rest).
+// Mwandishi dark theme: adapt template chrome (Bootstrap handles the rest).
 // The CV paper preview intentionally stays light in both modes.
 [data-bs-theme="dark"] {
   .sidebar { background: $gray-900; border-color: $gray-800; }
@@ -245,7 +261,7 @@
   [data-bs-theme="dark"] .tpl-banking .cv-head { background: #000; }
 }
 
-// MrCV gallery: scaled real-template preview + coming-soon cards
+// Mwandishi gallery: scaled real-template preview + coming-soon cards
 .cv-frame {
   height: 360px;
   overflow: hidden;

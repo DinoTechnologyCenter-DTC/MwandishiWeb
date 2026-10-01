@@ -27,6 +27,8 @@ jobs:
 
       - run: npm run build
         working-directory: frontend
+        env:
+          GHPAGES: 1
 
       - run: touch frontend/dist/.nojekyll
 

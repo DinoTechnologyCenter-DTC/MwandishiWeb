@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/frontend"
 
 echo "==> building"
-npm run build
+GHPAGES=1 npm run build
 touch dist/.nojekyll
 
 ORIGIN="$(git -C "$ROOT" remote get-url origin)"

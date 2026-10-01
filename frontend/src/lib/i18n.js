@@ -1,12 +1,16 @@
-// MrCV i18n — English / Kiswahili. Static strings via [data-i18n],
+// Mwandishi i18n — English / Kiswahili. Static strings via [data-i18n],
 // sidebar via href map (no HTML edits needed there). Auto-applies on every
 // page through main.js. Dynamic content uses t() at render time.
-import { getUser } from './mrcv-store.js';
+import { getUser } from './store.js';
 
 const EN = {
   'nav.mycvs': 'My CVs', 'nav.templates': 'Templates', 'nav.newcv': 'New CV',
   'nav.letters': 'Cover Letters', 'nav.myaccount': 'My Account', 'nav.login': 'Log in',
   'nav.signup': 'Sign up', 'nav.logout': 'Log out', 'nav.account': 'Account',
+  'nav.upload': 'Upload CV', 'nav.soon': 'Soon',
+  'soon.title': 'Coming soon',
+  'soon.body': 'CV upload and restructuring is on the way. For now, build your CV here or paste your details into the AI chat.',
+  'soon.close': 'Got it',
   'acc.title': 'My Account', 'acc.sub': 'Your profile, saved on this device. No cloud needed.',
   'acc.profile': 'Profile', 'acc.name': 'Full name', 'acc.phone': 'Phone', 'acc.email': 'Email',
   'acc.lang': 'Language / Lugha', 'acc.country': 'Country', 'acc.region': 'Region / City',
@@ -46,6 +50,7 @@ const EN = {
   'bld.title': 'New CV', 'bld.intro': 'Fill in your details — preview updates live.',
   'fld.name': 'Full name *', 'fld.title': 'Professional title', 'fld.phone': 'Phone *',
   'fld.email': 'Email', 'fld.address': 'Address', 'fld.summary': 'Professional summary',
+  'fld.photo': 'Photo',
   'mode.choose': 'How do you want to start?', 'mode.manual': 'Customize Yourself',
   'mode.manualSub': 'Fill the guided form step by step — full control.',
   'mode.ai': 'AI Generation', 'mode.aiSub': 'Answer 4 quick questions — we draft it for you.',
@@ -57,15 +62,18 @@ const EN = {
   'ai.aboutPh': 'e.g. Finished Form Six in 2022, worked at a shop in Kariakoo, phone 0765 123 456, good with customers',
   'ai.generate': 'Generate my CV', 'ai.draft': 'Smart draft ready — review and edit below.',
   'ai.needName': 'Please add your name first.',
-  'chat.hi': "Hi! I'm MrCV AI. I'll draft your CV from 4 quick answers — rough is fine.",
+  'opt.all': 'All',
+  'chat.hi': "Hi! I'm Mwandishi AI. I'll draft your CV from 4 quick answers — rough is fine.",
   'chat.qName': 'First: what is your full name?',
   'chat.qJob': 'Great, {name}! What job are you targeting?',
   'chat.qLevel': 'Got it. What is your experience level?',
   'chat.qAbout': 'Last one — tell me about yourself: school, work, phone, skills. Rough is fine.',
   'chat.done': 'Smart draft ready! Review and edit it in the form below.',
   'chat.view': 'View draft', 'chat.restart': 'Start over', 'chat.sendPh': 'Type here…',
+  'chat.newchat': 'New chat',
+  'chat.offline': 'Connection lost — continuing with simple questions.',
   'preview.live': 'Live preview', 'preview.expand': 'Expand', 'preview.collapse': 'Collapse',
-  'thanks.title': 'Thank you!', 'thanks.body': 'Thank you for generating your CV with MrCV. Good luck with your applications!',
+  'thanks.title': 'Thank you!', 'thanks.body': 'Thank you for generating your CV with Mwandishi. Good luck with your applications!',
   'thanks.close': 'Close',
   'notif.viewAll': 'View all', 'notif.caughtUp': 'All caught up. Good luck with the applications!',
   'notif.profileT': 'Complete your profile', 'notif.profileS': 'Add your name so CVs and letters fill themselves.',
@@ -78,6 +86,9 @@ const EN = {
   'chat.sProj': 'Adding your projects…', 'chat.sRef': 'Adding your referees…',
   'ai.promoT': 'Want it faster?', 'ai.promoS': 'Let AI draft your CV from 4 quick answers.',
   'ai.promoBtn': 'Try AI Generation',
+  'ai.pick': 'What would you like to do?', 'ai.pickSub': 'Answer a few questions and I will build your CV.',
+  'ai.trySaying': 'Try one of these:', 'ai.sug1': 'Create a CV for me',
+  'ai.sug2': 'Improve my current CV', 'ai.sug3': 'I am a fresh graduate',
   'ai2.ad': 'Paste the job advert', 'ai2.bg': 'Your background (rough is fine)',
   'ai2.generate': 'Generate tailored letter', 'ai2.matched': 'Matched requirements:',
 };
@@ -86,6 +97,10 @@ const SW = {
   'nav.mycvs': 'CV Zangu', 'nav.templates': 'Violezo', 'nav.newcv': 'CV Mpya',
   'nav.letters': 'Barua za Maombi', 'nav.myaccount': 'Akaunti Yangu', 'nav.login': 'Ingia',
   'nav.signup': 'Jisajili', 'nav.logout': 'Toka', 'nav.account': 'Akaunti',
+  'nav.upload': 'Pakia CV', 'nav.soon': 'Hivi karibuni',
+  'soon.title': 'Inakuja hivi karibuni',
+  'soon.body': 'Upakiaji na uundaji upya wa CV unakuja. Kwa sasa, tengeneza CV yako hapa au bandika maelezo kwenye AI.',
+  'soon.close': 'Sawa',
   'acc.title': 'Akaunti Yangu', 'acc.sub': 'Wasifu wako, umehifadhiwa kwenye kifaa chako. Hakuna wingu linalohitajika.',
   'acc.profile': 'Wasifu', 'acc.name': 'Jina kamili', 'acc.phone': 'Simu', 'acc.email': 'Barua pepe',
   'acc.lang': 'Lugha', 'acc.country': 'Nchi', 'acc.region': 'Mkoa / Jiji',
@@ -125,6 +140,7 @@ const SW = {
   'bld.title': 'CV Mpya', 'bld.intro': 'Jaza taarifa zako — hakiki inasasishwa moja kwa moja.',
   'fld.name': 'Jina kamili *', 'fld.title': 'Cheo cha kitaaluma', 'fld.phone': 'Simu *',
   'fld.email': 'Barua pepe', 'fld.address': 'Anwani', 'fld.summary': 'Muhtasari wa kitaaluma',
+  'fld.photo': 'Picha',
   'mode.choose': 'Utaanzaje?', 'mode.manual': 'Jitengenezee Mwenyewe',
   'mode.manualSub': 'Jaza fomu hatua kwa hatua — udhibiti kamili.',
   'mode.ai': 'Uzalishaji wa AI', 'mode.aiSub': 'Jibu maswali 4 mafupi — tunakuandalia rasimu.',
@@ -136,15 +152,18 @@ const SW = {
   'ai.aboutPh': 'mf. Nilimaliza Kidato cha Sita 2022, nilifanya kazi dukani Kariakoo, simu 0765 123 456, mzuri na wateja',
   'ai.generate': 'Nitengenezee CV', 'ai.draft': 'Rasimu janja tayari — pitia na uhariri hapa chini.',
   'ai.needName': 'Tafadhali weka jina lako kwanza.',
-  'chat.hi': 'Habari! Mimi ni MrCV AI. Nitakuandalia CV kutoka maswali 4 mafupi — hata kwa ufupi.',
+  'opt.all': 'Zote',
+  'chat.hi': 'Habari! Mimi ni Mwandishi AI. Nitakuandalia CV kutoka maswali 4 mafupi — hata kwa ufupi.',
   'chat.qName': 'Kwanza: jina lako kamili ni nani?',
   'chat.qJob': 'Vizuri, {name}! Unalenga kazi gani?',
   'chat.qLevel': 'Sawa. Kiwango chako cha uzoefu ni kipi?',
   'chat.qAbout': 'La mwisho — niambie kuhusu wewe: shule, kazi, simu, ujuzi. Hata kwa ufupi.',
   'chat.done': 'Rasimu janja tayari! Pitia na uhariri kwenye fomu hapa chini.',
   'chat.view': 'Tazama rasimu', 'chat.restart': 'Anza upya', 'chat.sendPh': 'Andika hapa…',
+  'chat.newchat': 'Mazungumzo mapya',
+  'chat.offline': 'Muunganisho umepotea — tunaendelea na maswali mepesi.',
   'preview.live': 'Hakiki moja kwa moja', 'preview.expand': 'Panua', 'preview.collapse': 'Kunja',
-  'thanks.title': 'Asante!', 'thanks.body': 'Asante kwa kutengeneza CV yako na MrCV. Kila la kheri na maombi yako!',
+  'thanks.title': 'Asante!', 'thanks.body': 'Asante kwa kutengeneza CV yako na Mwandishi. Kila la kheri na maombi yako!',
   'thanks.close': 'Funga',
   'notif.viewAll': 'Tazama zote', 'notif.caughtUp': 'Umemaliza yote. Kila la kheri na maombi!',
   'notif.profileT': 'Kamilisha wasifu wako', 'notif.profileS': 'Weka jina lako CV na barua zijijaze zenyewe.',
@@ -157,11 +176,14 @@ const SW = {
   'chat.sProj': 'Ninaongeza miradi…', 'chat.sRef': 'Ninaongeza wadhamini…',
   'ai.promoT': 'Unataka haraka?', 'ai.promoS': 'AI ikuandalie CV kutoka maswali 4 mafupi.',
   'ai.promoBtn': 'Jaribu AI',
+  'ai.pick': 'Ungependa kufanya nini?', 'ai.pickSub': 'Jibu maswali machache na nitakutengenezea CV.',
+  'ai.trySaying': 'Jaribu mojawapo ya hizi:', 'ai.sug1': 'Nitengeneze CV',
+  'ai.sug2': 'Boresha CV yangu', 'ai.sug3': 'Mimi ni mhitimu mpya',
   'ai2.ad': 'Bandika tangazo la kazi', 'ai2.bg': 'Historia yako (hata kwa ufupi)',
   'ai2.generate': 'Tengeneza barua iliyoboreshwa', 'ai2.matched': 'Mahitaji yaliyolingana:',
 };
 
-const STR = { en: EN, sw: SW };
+export const STR = { en: EN, sw: SW };
 
 export function lang() {
   try { return (getUser().lang || 'EN').toUpperCase() === 'SW' ? 'sw' : 'en'; }

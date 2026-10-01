@@ -1,10 +1,10 @@
-# MrCV — Product Features Spec
+# Mwandishi — Product Features Spec
 
 > Goal: Beat existing free CV generators (SimpleCV, EasyFreeResume, FreeCVGenerator, NestCV, EngineCV, Reactive Resume, FlowCV, Canva) — not with more templates, but with intelligence + workflow.
 
 ## 1. Competitive Landscape (Sept 2026)
 
-| Competitor | Strength | Weakness / Gap for MrCV to exploit |
+| Competitor | Strength | Weakness / Gap for Mwandishi to exploit |
 |---|---|---|
 | SimpleCV.io | 100% free, private (localStorage), ATS-friendly | Static filler, no AI, no JD matching, no versions |
 | EasyFreeResume | No signup, instant PDF | No ATS score, no import, ad-driven, no cover letter |
@@ -19,7 +19,7 @@
 
 ---
 
-## 2. MrCV Differentiators (How We Win)
+## 2. Mwandishi Differentiators (How We Win)
 
 ### D1. JD-to-CV Tailor (Killer Feature)
 - Paste job title + description / URL / PDF.
@@ -172,7 +172,7 @@
 - Payments: mobile-money first (M-Pesa/Tigo Pesa/Airtel Money), TZS pricing, pay-per-download, receipts via SMS.
 - i18n: full SW + EN strings, including ATS checks in plain language.
 - Accessibility: WCAG AA, keyboard navigable, printable contrast.
-- Monetization (without bait-and-switch): Pro = AI credits bulk, custom domain, analytics+, remove `Made with MrCV` badge — never lock basic download after build.
+- Monetization (without bait-and-switch): Pro = AI credits bulk, custom domain, analytics+, remove `Made with Mwandishi` badge — never lock basic download after build.
 
 ## 6. Success Metrics
 - Export success rate > 98%

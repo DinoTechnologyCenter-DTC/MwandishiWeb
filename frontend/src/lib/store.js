@@ -1,4 +1,4 @@
-// MrCV local-first store — P0: works with no account, data stays on device.
+// Mwandishi local-first store — P0: works with no account, data stays on device.
 const KEY = 'mrcv.v1';
 const nowISO = () => new Date().toISOString();
 
@@ -17,7 +17,10 @@ export const TEMPLATES = [
     best: 'Any role, experienced hires', badges: ['ATS-safe', 'EN/SW', 'Free'] },
   { slug: 'clinical', name: 'Professional Two-Column', cat: 'general', mock: 'formal',
     desc: 'Teal two-column design converted from a pro layout. Best for email and hand-in; use an ATS-clean template for portals.',
-    best: 'Doctors, nurses, consultants, hand-in CVs', badges: ['2-column', 'Print-ready', 'Free'] },
+    best: 'Doctors, nurses, consultants, hand-in CVs', badges: ['2-column', 'Free'] },
+  { slug: 'exact', name: 'Exact Replica', cat: 'general', mock: 'formal',
+    desc: 'Pixel-faithful pro layout: photo rail, two-tone name, fixed columns.',
+    best: 'A classic, polished two-column look', badges: ['2-column', 'Photo', 'Free'] },
   { slug: 'barua', name: 'Application Letter (Barua ya Maombi)', cat: 'barua', kind: 'letter', mock: 'letter',
     desc: 'Swahili or English application-letter layout. Pairs with any CV for a complete application pack.',
     best: 'Barua za maombi kwa Kiswahili au Kiingereza', badges: ['Kiswahili', 'Letter', 'Free'], useLink: 'cover-letters.html#generator' },
@@ -235,6 +238,110 @@ export async function downloadFromBackend(kind, payload) {
   }
 }
 
+// AI conversation turn (Groq via backend): null when unreachable so the
+// caller falls back to the scripted questions.
+export async function chatViaBackend(messages, lang) {
+  const base = backendBase();
+  if (!base) return null;
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 75000);
+  try {
+    const r = await fetch(`${base}/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, lang }),
+      signal: ctl.signal,
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || typeof j.reply !== 'string') return null;
+    return j;
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+// AI draft from the backend (Groq Llama): map model JSON into blankData shape.
+// Pure + defensive: unknown fields dropped, arrays capped, never throws.
+export function aiJsonToData(d) {
+  const s = (v) => String(v ?? '').trim();
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const src = d && typeof d === 'object' ? d : {};
+  const data = blankData();
+  data.personal.summary = s(src.summary);
+  data.personal.phone = normalizeTZPhone(s(src.phone)) || s(src.phone);
+  data.personal.email = s(src.email);
+  data.personal.address = s(src.address);
+  const edu = arr(src.education).filter((e) => e && (e.school || e.qualification));
+  if (edu.length) {
+    data.education = edu.slice(0, 4).map((e) => ({
+      school: s(e.school), qualification: s(e.qualification), start: s(e.start), end: s(e.end),
+    }));
+  }
+  const exp = arr(src.experience).filter((e) => e && (e.employer || e.role));
+  if (exp.length) {
+    data.experience = exp.slice(0, 5).map((e) => ({
+      employer: s(e.employer),
+      role: s(e.role),
+      start: s(e.start),
+      end: s(e.end),
+      bullets: arr(e.bullets).map(s).filter(Boolean).join('\n'),
+    }));
+  }
+  const sk = arr(src.skills).map(s).filter(Boolean);
+  if (sk.length) data.skills = [...new Set(sk)].join('\n');
+  return data;
+}
+
+// POST answers to the backend AI; null when unreachable/unconfigured
+// so the caller falls back to the offline rule-based draft.
+export async function draftViaBackend(input) {
+  const base = backendBase();
+  if (!base) return null;
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), 75000);
+  try {
+    const r = await fetch(`${base}/ai/draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      signal: ctl.signal,
+    });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || !j.draft) return null;
+    return aiJsonToData(j.draft);
+  } catch (e) {
+    return null;
+  } finally {
+    clearTimeout(to);
+  }
+}
+
+// Parse a typed experience-level answer ("2", "fresher", "mhitimu", ...).
+// Returns 'student' | 'fresher' | 'experienced' or null when unrecognized.
+export function parseLevel(v) {
+  const lv = String(v || '').toLowerCase().trim();
+  if (/^(1|student|mwanafunzi)\b/.test(lv)) return 'student';
+  if (/^(2|fresh|fresher|mhitimu)/.test(lv)) return 'fresher';
+  if (/^(3|exper|mwenye uzoefu|uzoefu)/.test(lv)) return 'experienced';
+  return null;
+}
+
+// Notifications: actionable next steps built from local data.
+// tr() is injected (keeps this module free of i18n imports).
+export function buildNotifs(cvs, letters, user, tr) {
+  const t = tr || ((k) => k);
+  const items = [];
+  if (!user.name) items.push({ icon: 'ti-user', cls: 'primary', title: t('notif.profileT'), text: t('notif.profileS'), link: 'account.html' });
+  if (!cvs.length) items.push({ icon: 'ti-files', cls: 'success', title: t('notif.firstT'), text: t('notif.firstS'), link: 'new-cv.html' });
+  else if (!cvs.some((c) => (c.downloads || 0) > 0)) items.push({ icon: 'ti-download', cls: 'warning', title: t('notif.dlT'), text: t('notif.dlS'), link: 'index.html' });
+  if (cvs.length && !letters.length) items.push({ icon: 'ti-mail', cls: 'info', title: t('notif.letterT'), text: t('notif.letterS'), link: 'cover-letters.html' });
+  return items.slice(0, 4);
+}
+
 // Styled .doc export: full Word package carrying the live web design
 // (accent color, font, size, template rules) — true WYSIWYG.
 export function downloadStyledDoc(filename, sheetHTML, cssText) {
@@ -249,11 +356,11 @@ export function downloadStyledDoc(filename, sheetHTML, cssText) {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 
-export const TEMPLATE_LABELS = { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', barua: 'Barua' };
+export const TEMPLATE_LABELS = { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact', barua: 'Barua' };
 
 export function blankData() {
   return {
-    personal: { fullName: '', title: '', phone: '', email: '', address: '', summary: '' },
+    personal: { fullName: '', title: '', phone: '', email: '', address: '', summary: '', photo: '' },
     education: [{ school: '', qualification: '', start: '', end: '' }],
     experience: [{ employer: '', role: '', start: '', end: '', bullets: '' }],
     skills: '',
@@ -368,6 +475,7 @@ export function cvThemedHTML(data, theme, template, opts = {}) {
   const font = opts.singleFont ? fullStack.split(',')[0].replace(/['"]/g, '') : fullStack;
   const size = (theme && theme.size) || '13px';
   const st = (s) => ` style="${s}"`;
+  if (template === 'exact') return cvExactExport(data, { accent, font, size });
   let h = cvToHTML(data);
   const headExtra = template === 'banking'
     ? 'background:#262626;color:#ffffff;padding:12px 14px;margin-bottom:12px;'
@@ -386,6 +494,102 @@ export function cvThemedHTML(data, theme, template, opts = {}) {
   h = h.split('<div class="cv-item-head">').join(`<div${st('font-weight:700;')}>`);
   return `<div${st(`font-family:${font};font-size:${size};color:#262626;line-height:1.55;`)}>${h}</div>`;
 }
+
+// Exact replica pro layout: fixed photo rail (photo,
+// contact, skills) + main column (two-tone name, profile, experience,
+// education, referees). Screen version uses CSS grid; export uses tables.
+export function cvExactHTML(data) {
+  const p = data.personal;
+  const parts = String(p.fullName || '').trim().split(/\s+/).filter(Boolean);
+  const first = parts.shift() || '';
+  const last = parts.join(' ');
+  const contact = [p.phone, p.email, p.address].map((x) => String(x || '').trim()).filter(Boolean);
+  const photo = p.photo
+    ? `<img src="${p.photo}" class="cv-exact-photo" alt="">`
+    : `<span class="cv-exact-initials">${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</span>`;
+  const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  const expList = data.experience.filter((e) => e.role || e.employer);
+  const eduList = data.education.filter((e) => e.school || e.qualification);
+  const refList = data.referees.filter((r) => r.name);
+  const sec = (t, inner) => inner ? `<div class="cv-exact-sec">${t}</div>${inner}` : '';
+  return `
+    <div class="cv-exact-cols">
+      <div class="cv-exact-rail">
+        <div class="cv-exact-photoWrap">${photo}</div>
+        ${sec('CONTACT', contact.map((c) => `<div class="cv-exact-line">${esc(c)}</div>`).join(''))}
+        ${sec('SKILLS', skills.map((s) => `<div class="cv-exact-line">${esc(s)}</div>`).join(''))}
+      </div>
+      <div class="cv-exact-main">
+        <div class="cv-exact-name"><span class="first">${esc(first) || 'Your'}</span> <span class="last">${esc(last) || 'Name'}</span></div>
+        ${p.title ? `<div class="cv-exact-role">${esc(p.title)}</div>` : ''}
+        ${sec('PROFILE', p.summary ? `<div>${esc(p.summary)}</div>` : '')}
+        ${sec('WORK EXPERIENCE', expList.map((e) => `
+          <div class="cv-item"><div class="cv-item-head"><span>${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}</span>${datesHTML(e.start, e.end)}</div>${bulletsHTML(e.bullets)}</div>`).join(''))}
+        ${sec('EDUCATION', eduList.map((e) => `
+          <div class="cv-item"><div class="cv-item-head"><span>${esc(e.qualification)}${e.school ? ` — ${esc(e.school)}` : ''}</span>${datesHTML(e.start, e.end)}</div></div>`).join(''))}
+        ${sec('REFEREES', refList.map((r) => `
+          <div class="cv-item"><strong>${esc(r.name)}</strong>${r.title ? ` — ${esc(r.title)}` : ''}${r.phone ? `<br><span class="cv-dates">${esc(r.phone)}</span>` : ''}</div>`).join(''))}
+      </div>
+    </div>`;
+}
+
+// Table-based export twin of cvExactHTML (Word/LibreOffice-proof).
+// Uses legacy primitives only (table/cell attrs, font tags, paragraphs):
+// LibreOffice drops class CSS, so everything rides inline or on attributes.
+export function cvExactExport(data, t) {
+  const p = data.personal;
+  const parts = String(p.fullName || '').trim().split(/\s+/).filter(Boolean);
+  const first = parts.shift() || '';
+  const last = parts.join(' ');
+  const contact = [p.phone, p.email, p.address].map((x) => String(x || '').trim()).filter(Boolean);
+  const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+  const photo = p.photo
+    ? `<p align="center"><img src="${p.photo}" width="110"></p>`
+    : `<p align="center"><font color="#244655" size="6"><b>${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</b></font></p>`;
+  const secH = (txt) => `<p><font color="${t.accent}" size="3"><b>${txt}</b></font></p>`;
+  const para = (txt) => `<p>${esc(txt)}</p>`;
+  const rail = `${photo}`
+    + (contact.length ? secH('CONTACT') + contact.map((c) => para(c)).join('') : '')
+    + (skills.length ? secH('SKILLS') + skills.map((s) => para(s)).join('') : '');
+  const expList = data.experience.filter((e) => e.role || e.employer);
+  const eduList = data.education.filter((e) => e.school || e.qualification);
+  const refList = data.referees.filter((r) => r.name);
+  const li = (b) => `<ul>` + String(b || '').split('\n').map((x) => x.trim()).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('') + `</ul>`;
+  const head = (role, emp, dates) => `<p><b>${esc(role)}${emp ? ` — ${esc(emp)}` : ''}</b>${dates ? ` <font color="#737373">(${esc(dates)})</font>` : ''}</p>`;
+  const main = `<p><font color="#171717" size="6">${esc(first) || 'Your'}</font> <font color="${t.accent}" size="6"><b>${esc(last) || 'Name'}</b></font></p>`
+    + (p.title ? `<p><b>${esc(p.title)}</b></p>` : '')
+    + (p.summary ? secH('PROFILE') + para(p.summary) : '')
+    + (expList.length ? secH('WORK EXPERIENCE') + expList.map((e) => head(e.role, e.employer, [e.start, e.end].filter(Boolean).join(' - ')) + li(e.bullets)).join('') : '')
+    + (eduList.length ? secH('EDUCATION') + eduList.map((e) => head(`${e.qualification}${e.school ? ` — ${e.school}` : ''}`, '', [e.start, e.end].filter(Boolean).join(' - '))).join('') : '')
+    + (refList.length ? secH('REFEREES') + refList.map((r) => para(`${r.name}${r.title ? `, ${r.title}` : ''}${r.phone ? ` — ${r.phone}` : ''}`)).join('') : '');
+  return `<div style="font-family:${t.font};font-size:${t.size};color:#262626;"><table width="100%" border="0" cellpadding="10" cellspacing="0"><tr>`
+    + `<td width="32%" valign="top" bgcolor="#EFEDEA">${rail}</td>`
+    + `<td width="68%" valign="top" bgcolor="#FFFFFF">${main}</td>`
+    + `</tr></table></div>`;
+}
+
+export const SAMPLE_EXACT = {
+  personal: {
+    fullName: 'Kai Carter',
+    title: 'General Practitioner',
+    phone: '678-555-0103',
+    email: 'kai@lamnahealthcare.com',
+    address: 'www.lamnahealthcare.com',
+    summary: 'Experienced and compassionate GP dedicated to delivering excellent patient care. Known for strong diagnostic skills and a patient-centered approach. Committed to promoting health and wellness through personalized treatment plans.',
+  },
+  education: [
+    { school: 'Jasper University', qualification: "Dean's List, Medical Research Award", start: 'September 20XX', end: 'June 20XX' },
+    { school: 'Bellows College', qualification: 'Bachelor of Science in Biology, Cum Laude', start: 'September 20XX', end: 'May 20XX' },
+  ],
+  experience: [
+    { employer: 'Lamna Healthcare', role: 'General Practitioner', start: 'December 20XX', end: 'present', bullets: 'Implemented evidence-based medicine for accurate diagnosis\nSpearheaded a community health fair, provided free screenings to over 200 residents' },
+    { employer: 'City Hospital', role: 'Medical Officer', start: 'April 20XX', end: 'August 20XX', bullets: 'Provided emergency medical care with a focus on trauma cases\nCollaborated with specialists to enhance patient outcomes' },
+    { employer: 'Tyler Stein MD', role: 'Family Physician', start: 'August 20XX', end: 'July 20XX', bullets: 'Managed a diverse patient caseload\nLed a smoking cessation program, +30% successful quit attempts' },
+  ],
+  skills: 'Clinical diagnosis\nPatient-centered care\nHealth promotion\nChronic disease management\nElectronic health records',
+  projects: [{ name: '', desc: '' }],
+  referees: [{ name: '', title: '', phone: '' }, { name: '', title: '', phone: '' }],
+};
 
 export const SAMPLE_CV = {
   personal: {
