@@ -1,4 +1,4 @@
-# MrCV — Product Features Spec
+# Mwandishi AI — Product Features Spec
 
 > Goal: Beat existing free CV generators (SimpleCV, EasyFreeResume, FreeCVGenerator, NestCV, EngineCV, Reactive Resume, FlowCV, Canva) — not with more templates, but with intelligence + workflow.
 
@@ -19,7 +19,7 @@
 
 ---
 
-## 2. MrCV Differentiators (How We Win)
+## 2. Mwandishi AI Differentiators (How We Win)
 
 ### D1. JD-to-CV Tailor (Killer Feature)
 - Paste job title + description / URL / PDF.
