@@ -168,8 +168,14 @@
   .cv-contact { font-size: .9em; color: $gray-500; margin-bottom: 12px; }
   .cv-sec { font-size: .95em; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: $gray-900; border-bottom: 2px solid var(--cv-accent); padding-bottom: 2px; margin: 14px 0 6px; }
   .cv-item { margin-bottom: 8px; }
-  .cv-item-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
-  .cv-dates { font-weight: 400; color: $gray-500; font-size: .9em; white-space: nowrap; }
+  // Real table, not a flex row: LibreOffice's DOCX filter ignores
+  // display:flex/table-cell on spans and welds the columns together, so the
+  // dates run into the role ("Nurse2021 - Present"). A borderless table is
+  // laid out identically here and survives the Word round-trip intact.
+  .cv-item-head { width: 100%; border-collapse: collapse; border: 0; font-weight: 600; }
+  .cv-item-head td { border: 0; padding: 0; vertical-align: bottom; }
+  .cv-item-head .cv-h-left { text-align: left; padding-right: 12px; }
+  .cv-dates { font-weight: 400; color: $gray-500; font-size: .9em; white-space: nowrap; text-align: right; }
   ul.cv-bullets { margin: 2px 0 0; padding-left: 18px; }
   .skill-chip { display: inline-block; background: $gray-100; border: 1px solid $gray-200; border-radius: 20px; padding: 1px 10px; margin: 0 4px 4px 0; font-size: .9em; }
 }

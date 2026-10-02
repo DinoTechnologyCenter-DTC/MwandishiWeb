@@ -1,6 +1,8 @@
 # Local test downloads / scratch
 eventsHappened/
 
+temp-not-to-include/
+
 # OS junk
 .DS_Store
 Thumbs.db

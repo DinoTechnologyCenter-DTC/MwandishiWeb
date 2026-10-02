@@ -43,7 +43,7 @@ CF_API_TOKEN = os.environ.get("CF_API_TOKEN", "")
 CF_ACCOUNT_ID = os.environ.get("CF_ACCOUNT_ID", "")
 CF_MODEL = os.environ.get("CF_MODEL", "@cf/openai/gpt-oss-20b")
 
-app = FastAPI(title="Mwandishi export backend")
+app = FastAPI(title="MwandishiAI", description="MwandishiAI CV builder backend — AI chat, CV drafts, PDF/DOCX export.")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -85,10 +85,17 @@ def safe_name(name: str, ext: str) -> str:
 
 
 def page_doc(html: str, css: str) -> str:
+    # Engine-agnostic print hardening. The page box is declared once here and
+    # must stay in step with the margin passed to page.pdf() below; if the two
+    # disagree, Chrome prints an offset or double-spaced gutter.
     return (
         "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>"
         "@page{size:A4;margin:10mm;}"
-        "body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}"
+        "body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}"
+        "*{box-sizing:border-box}"
+        "table{border-collapse:collapse;max-width:100%}"
+        "img{max-width:100%;height:auto}"
+        "h1,h2,h3,h4,p,li,div{orphans:2;widows:2}"
         f"{css or ''}</style></head><body>{html or ''}</body></html>"
     )
 
@@ -106,6 +113,11 @@ async def get_browser():
         args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
     )
     return _browser
+
+
+@app.get("/")
+async def root():
+    return {"app": "MwandishiAI", "docs": "/docs", "health": "/api/health"}
 
 
 @app.get("/api/health")

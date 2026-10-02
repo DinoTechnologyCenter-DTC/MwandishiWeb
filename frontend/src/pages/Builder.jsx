@@ -5,7 +5,7 @@ import {
   blankData, createCV, getCV, updateCV, TEMPLATE_LABELS, COUNTRIES, esc,
   waLink, downloadStyledDoc, downloadFromBackend, draftViaBackend,
   chatViaBackend, collectSheetCSS, cvThemedHTML, cvExactHTML, cvToHTML,
-  normalizeTZPhone, parseLevel,
+  normalizeTZPhone, parseLevel, withExportPatch,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import logoUrl from '../assets/images/logo-icon.svg';
@@ -417,11 +417,11 @@ export default function Builder({ initialMode }) {
   };
 
   // ---- export ----
-  const currentExportCSS = () => collectSheetCSS({
+  const currentExportCSS = () => withExportPatch(collectSheetCSS({
     color: theme.color,
     fontStack: FONTS[theme.font] || FONTS.poppins,
     size: SIZES[theme.size] || SIZES.m,
-  }) || exportCSS();
+  }) || exportCSS());
   const currentExportHTML = (singleFont) => cvThemedHTML(data, {
     color: theme.color,
     fontStack: FONTS[theme.font] || FONTS.poppins,
@@ -698,7 +698,7 @@ export default function Builder({ initialMode }) {
                 </div>
               </div>
             </div>
-            <SectionCard n="2" title={t('bld.education')} onAdd={() => addRow('education', { ...blanksFor.education })}>
+            <SectionCard n="2" title={t('bld.education')} addLabel={t('bld.add')} onAdd={() => addRow('education', { ...blanksFor.education })}>
               <div id="eduList">
                 {data.education.map((e, i) => (
                   <div className="border rounded p-2 mb-2" key={i}>
@@ -713,7 +713,7 @@ export default function Builder({ initialMode }) {
                 ))}
               </div>
             </SectionCard>
-            <SectionCard n="3" title={t('bld.experience')} onAdd={() => addRow('experience', { ...blanksFor.experience })}>
+            <SectionCard n="3" title={t('bld.experience')} addLabel={t('bld.add')} onAdd={() => addRow('experience', { ...blanksFor.experience })}>
               <div id="expList">
                 {data.experience.map((e, i) => (
                   <div className="border rounded p-2 mb-2" key={i}>
@@ -735,7 +735,7 @@ export default function Builder({ initialMode }) {
                 <textarea className="form-control" rows="2" value={data.skills} onChange={(e) => setPath('skills', e.target.value)} placeholder="One per line or comma separated: e.g. Classroom management, Kiswahili, First aid"></textarea>
               </div>
             </div>
-            <SectionCard n="5" title={t('bld.projects')} onAdd={() => addRow('projects', { ...blanksFor.projects })}>
+            <SectionCard n="5" title={t('bld.projects')} addLabel={t('bld.add')} onAdd={() => addRow('projects', { ...blanksFor.projects })}>
               <div id="projList">
                 {data.projects.map((p, i) => (
                   <div className="border rounded p-2 mb-2" key={i}>
@@ -746,7 +746,7 @@ export default function Builder({ initialMode }) {
                 ))}
               </div>
             </SectionCard>
-            <SectionCard n="6" title={<React.Fragment>{t('bld.referees')} <small className="text-secondary fw-normal">{t('bld.refNote')}</small></React.Fragment>} onAdd={() => addRow('referees', { ...blanksFor.referees })}>
+            <SectionCard n="6" title={<React.Fragment>{t('bld.referees')} <small className="text-secondary fw-normal">{t('bld.refNote')}</small></React.Fragment>} addLabel={t('bld.add')} onAdd={() => addRow('referees', { ...blanksFor.referees })}>
               <div id="refList">
                 {data.referees.map((r, i) => (
                   <div className="border rounded p-2 mb-2" key={i}>
@@ -790,14 +790,15 @@ export default function Builder({ initialMode }) {
     </React.Fragment>
   );
 
-  function SectionCard({ n, title, onAdd, children }) {
-    return (
-      <div className="card mb-3">
-        <div className="card-header bg-white px-4 py-3 d-flex justify-content-between align-items-center"><h4 className="mb-0 h6"><span className="badge bg-primary me-2">{n}</span>{title}</h4><button className="btn btn-sm btn-outline-primary" type="button" onClick={onAdd}><i className="ti ti-plus"></i> <span>{t('bld.add')}</span></button></div>
-        <div className="card-body p-3">{children}</div>
-      </div>
-    );
   }
+
+function SectionCard({ n, title, addLabel, onAdd, children }) {
+  return (
+    <div className="card mb-3">
+      <div className="card-header bg-white px-4 py-3 d-flex justify-content-between align-items-center"><h4 className="mb-0 h6"><span className="badge bg-primary me-2">{n}</span>{title}</h4><button className="btn btn-sm btn-outline-primary" type="button" onClick={onAdd}><i className="ti ti-plus"></i> <span>{addLabel}</span></button></div>
+      <div className="card-body p-3">{children}</div>
+    </div>
+  );
 }
 
 function completeness(d) {

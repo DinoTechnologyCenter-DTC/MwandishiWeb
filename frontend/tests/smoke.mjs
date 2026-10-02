@@ -42,6 +42,29 @@ check('level numbers', m.parseLevel('1') === 'student' && m.parseLevel('2') === 
 check('level words EN/SW', m.parseLevel('Fresh graduate') === 'fresher' && m.parseLevel('mhitimu mpya') === 'fresher' && m.parseLevel('mwanafunzi') === 'student');
 check('level unknown', m.parseLevel('banana') === null && m.parseLevel('') === null);
 
+// --- export fidelity -------------------------------------------------------
+// LibreOffice's DOCX filter ignores flexbox and welds columns together, so the
+// item head must be real table markup. These guard the two ways that has
+// silently broken before: the class-based sheet and the inline-styled payload
+// used for Word.
+const sampleSheet = m.cvToHTML(m.SAMPLE_CV);
+const sampleDocx = m.cvThemedHTML(m.SAMPLE_CV, { color: '#E66239', fontStack: 'Calibri', size: '13px' }, 'graduate', { singleFont: true });
+const themed = m.cvThemedHTML(m.SAMPLE_CV, { color: '#E66239', fontStack: "'Poppins',sans-serif", size: '13px' }, 'graduate');
+const hasBalancedTags = (html) => !/"</.test(html)
+  && (html.match(/<table/g) || []).length === (html.match(/<\/table>/g) || []).length
+  && (html.match(/<td[\s>]/g) || []).length === (html.match(/<\/td>/g) || []).length;
+
+check('export: item head is a table', /<table class="cv-item-head">/.test(sampleSheet));
+check('export: dates live in their own cell', /<td class="cv-dates">/.test(sampleSheet));
+check('export: inline payload has a real table', /<table style="[^"]*width:100%/.test(sampleDocx));
+check('export: dates cell right-aligned inline', /<td style="[^"]*text-align:right[^"]*">\s*[\d]{4}/.test(sampleDocx));
+check('export: inline tags well formed', hasBalancedTags(sampleDocx) && hasBalancedTags(themed));
+check('export: no unclosed tag boundary', !/"<[^a-z/]/i.test(sampleDocx) && !/"<[^a-z/]/i.test(themed));
+check('export: skills never welded', !/<\/span><span class="skill-chip"/.test(sampleSheet)
+  && /<\/span> <span class="skill-chip">/.test(sampleSheet));
+check('export: patch present and idempotent', m.withExportPatch('A').includes('.cv-item-head{display:table!important')
+  && m.withExportPatch(m.withExportPatch('A')).split('display:table!important').length === 2);
+
 const mapped = m.aiJsonToData({ summary: 'S', phone: '0765', education: [{ school: 'X' }], experience: [], skills: ['A'] });
 check('ai map', mapped.personal.summary === 'S' && mapped.education[0].school === 'X');
 

@@ -344,6 +344,35 @@ export function buildNotifs(cvs, letters, user, tr) {
 
 // Styled .doc export: full Word package carrying the live web design
 // (accent color, font, size, template rules) — true WYSIWYG.
+// Paper-only overrides appended to every export (see currentExportCSS).
+// collectSheetCSS scrapes the live site sheet so exports can never drift from
+// the preview, but that sheet is written for the on-screen card, so it drags
+// in preview chrome (border/radius/shadow/padding) and lays the CV out with
+// flexbox, which LibreOffice's DOCX filter flattens into run-together text
+// ("...Hospital2021 - Present", "Patient careIV administration"). The rules
+// below are !important so they beat the scraped ones, and deliberately use
+// only constructs that Chrome's print path and Writer's HTML import both
+// honour, so the PDF and the DOCX render the same.
+export const EXPORT_PATCH = `
+.cv-sheet{border:0!important;border-radius:0!important;box-shadow:none!important;background:#fff!important;padding:0!important;width:auto!important;max-width:none!important;min-height:0!important;overflow:visible!important}
+.tpl-banking .cv-head{margin:0!important;border-radius:0!important}
+.tpl-clinical.cv-sheet{column-gap:24px!important}
+.cv-head,.cv-sec,.cv-item,.cv-item-head,.cv-bullets li,.skill-chip{break-inside:avoid;page-break-inside:avoid}
+.cv-sec{break-after:avoid;page-break-after:avoid}
+.cv-item-head{display:table!important;width:100%!important;border-collapse:collapse!important}
+.cv-item-head td{border:0!important;padding:0!important;vertical-align:bottom!important}
+.cv-item-head .cv-h-left{text-align:left!important;padding-right:12px!important}
+.cv-item-head .cv-dates{text-align:right!important;white-space:nowrap!important}
+.skill-chip{margin:0 0 4px 0!important}
+.cv-sheet p,.cv-sheet li,.cv-sheet div{orphans:2;widows:2}
+`;
+
+// Idempotent: safe to call on a sheet that already carries the patch.
+export function withExportPatch(css) {
+  const s = String(css || '');
+  return s.includes('.cv-item-head{display:table!important') ? s : s + EXPORT_PATCH;
+}
+
 export function downloadStyledDoc(filename, sheetHTML, cssText) {
   const name = String(filename || 'document').replace(/[\\/:*?"<>|]/g, '-').replace(/(\.doc)?$/i, '.doc');
   const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>CV</title><style>${cssText}</style></head><body>${sheetHTML}</body></html>`;
@@ -441,6 +470,16 @@ export function datesHTML(s, e) {
   return t ? `<span class="cv-dates">${esc(t)}</span>` : '';
 }
 
+// Two-column role/employer + dates row as a borderless table. Writer only
+// honours real table markup, so this is what keeps the columns from merging
+// in the exported DOCX. The left cell is always present; the dates cell is
+// omitted when there are no dates.
+export function itemHeadHTML(left, s, e) {
+  const t = [s, e].map((x) => String(x || '').trim()).filter(Boolean).join(' – ');
+  const right = t ? `<td class="cv-dates">${esc(t)}</td>` : '';
+  return `<table class="cv-item-head"><tbody><tr><td class="cv-h-left">${esc(left)}</td>${right}</tr></tbody></table>`;
+}
+
 export function cvToHTML(data, only = null) {
   const show = (key) => !only || only.includes(key);
   const p = data.personal;
@@ -454,12 +493,12 @@ export function cvToHTML(data, only = null) {
     </div>
     ${show('summary') && p.summary ? `<div class="cv-sec">Summary</div><div>${esc(p.summary)}</div>` : ''}
     ${show('experience') && data.experience.some((e) => e.role || e.employer) ? `<div class="cv-sec">Experience</div>${data.experience.filter((e) => e.role || e.employer).map((e) => `
-      <div class="cv-item"><div class="cv-item-head"><span>${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}</span>${datesHTML(e.start, e.end)}</div>${bulletsHTML(e.bullets)}</div>`).join('')}` : ''}
+      <div class="cv-item">${itemHeadHTML(`${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}`, e.start, e.end)}${bulletsHTML(e.bullets)}</div>`).join('')}` : ''}
     ${show('education') && data.education.some((e) => e.school || e.qualification) ? `<div class="cv-sec">Education</div>${data.education.filter((e) => e.school || e.qualification).map((e) => `
-      <div class="cv-item"><div class="cv-item-head"><span>${esc(e.qualification)}${e.school ? ` — ${esc(e.school)}` : ''}</span>${datesHTML(e.start, e.end)}</div></div>`).join('')}` : ''}
-    ${show('skills') && skills.length ? `<div class="cv-sec">Skills</div><div>${skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join('')}</div>` : ''}
+      <div class="cv-item">${itemHeadHTML(`${esc(e.qualification)}${e.school ? ` — ${esc(e.school)}` : ''}`, e.start, e.end)}</div>`).join('')}` : ''}
+    ${show('skills') && skills.length ? `<div class="cv-sec">Skills</div><div>${skills.map((s) => `<span class="skill-chip">${esc(s)}</span>`).join(' ')}</div>` : ''}
     ${show('projects') && data.projects.some((x) => x.name || x.desc) ? `<div class="cv-sec">Projects</div>${data.projects.filter((x) => x.name || x.desc).map((x) => `
-      <div class="cv-item"><div class="cv-item-head"><span>${esc(x.name)}</span></div><div>${esc(x.desc)}</div></div>`).join('')}` : ''}
+      <div class="cv-item">${itemHeadHTML(esc(x.name), '', '')}<div>${esc(x.desc)}</div></div>`).join('')}` : ''}
     ${show('referees') && data.referees.some((r) => r.name) ? `<div class="cv-sec">Referees</div>${data.referees.filter((r) => r.name).map((r) => `
       <div class="cv-item"><strong>${esc(r.name)}</strong>${r.title ? ` — ${esc(r.title)}` : ''}${r.phone ? `<br><span class="cv-dates">${esc(r.phone)}</span>` : ''}</div>`).join('')}` : ''}`;
 }
@@ -490,8 +529,10 @@ export function cvThemedHTML(data, theme, template, opts = {}) {
   if (template === 'government') sec = `font-size:12px;font-weight:700;color:#171717;border-bottom:3px double ${accent};padding-bottom:2px;margin:14px 0 6px;`;
   if (template === 'general') sec = `font-size:12px;font-weight:700;color:#171717;border:none;border-left:4px solid ${accent};padding-left:8px;margin:14px 0 6px;`;
   h = h.split('<div class="cv-sec">').join(`<div${st(sec)}>`);
-  h = h.split('<span class="cv-dates">').join(`<span${st('color:#737373;font-size:12px;')}>`);
-  h = h.split('<div class="cv-item-head">').join(`<div${st('font-weight:700;')}>`);
+  h = h.split('<span class="cv-dates">').join(`<span${st('color:#737373;font-size:12px;')}`);
+  h = h.split('<table class="cv-item-head">').join(`<table${st('width:100%;border-collapse:collapse;border:0;font-weight:700;')}>`);
+  h = h.split('<td class="cv-h-left">').join(`<td${st('border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;')}>`);
+  h = h.split('<td class="cv-dates">').join(`<td${st('border:0;padding:0;vertical-align:bottom;text-align:right;white-space:nowrap;font-weight:400;color:#737373;font-size:12px;')}>`);
   return `<div${st(`font-family:${font};font-size:${size};color:#262626;line-height:1.55;`)}>${h}</div>`;
 }
 
@@ -524,9 +565,9 @@ export function cvExactHTML(data) {
         ${p.title ? `<div class="cv-exact-role">${esc(p.title)}</div>` : ''}
         ${sec('PROFILE', p.summary ? `<div>${esc(p.summary)}</div>` : '')}
         ${sec('WORK EXPERIENCE', expList.map((e) => `
-          <div class="cv-item"><div class="cv-item-head"><span>${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}</span>${datesHTML(e.start, e.end)}</div>${bulletsHTML(e.bullets)}</div>`).join(''))}
+          <div class="cv-item">${itemHeadHTML(`${esc(e.role)}${e.employer ? ` — ${esc(e.employer)}` : ''}`, e.start, e.end)}${bulletsHTML(e.bullets)}</div>`).join(''))}
         ${sec('EDUCATION', eduList.map((e) => `
-          <div class="cv-item"><div class="cv-item-head"><span>${esc(e.qualification)}${e.school ? ` — ${esc(e.school)}` : ''}</span>${datesHTML(e.start, e.end)}</div></div>`).join(''))}
+          <div class="cv-item">${itemHeadHTML(`${esc(e.qualification)}${e.school ? ` — ${esc(e.school)}` : ''}`, e.start, e.end)}</div>`).join(''))}
         ${sec('REFEREES', refList.map((r) => `
           <div class="cv-item"><strong>${esc(r.name)}</strong>${r.title ? ` — ${esc(r.title)}` : ''}${r.phone ? `<br><span class="cv-dates">${esc(r.phone)}</span>` : ''}</div>`).join(''))}
       </div>
