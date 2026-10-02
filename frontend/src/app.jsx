@@ -9,6 +9,8 @@ import Letters from './pages/Letters.jsx';
 import Account from './pages/Account.jsx';
 import Builder from './pages/Builder.jsx';
 import { NotFound, Signin, Signup } from './pages/Auth.jsx';
+import Privacy from './pages/Privacy.jsx';
+import Terms from './pages/Terms.jsx';
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
         <Routes>
           {/* Public marketing front door — no app chrome. */}
           <Route path="/" element={<Landing />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             {/* Old entry point, kept working for existing bookmarks. */}

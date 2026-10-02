@@ -38,7 +38,7 @@ export default function Layout() {
           <div className="row">
             <div className="col-12">
               <footer className="text-center py-1 mt-0 text-secondary">
-                <p className="mb-0">Copyright © 2026 Mwandishi. Build a job-winning CV in minutes. </p>
+                <p className="mb-0">Copyright © 2026 Mwandishi. {t('lp.fTag')} </p>
               </footer>
             </div>
           </div>

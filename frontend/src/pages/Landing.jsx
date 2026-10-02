@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLang, useTheme } from '../context.jsx';
 import { TEMPLATES } from '../lib/store.js';
 import TemplatePreview, { useLinkFor } from '../components/TemplatePreview.jsx';
+import SplitText from '../components/SplitText.jsx';
 import logoUrl from '../assets/images/logo-icon.svg';
 
 // Marketing copy lives in i18n.js; these tables only carry layout metadata.
@@ -11,12 +12,6 @@ const STATS = [
   ['lp.s2v', 'lp.s2l', 'ti-language'],
   ['lp.s3v', 'lp.s3l', 'ti-file-type-pdf'],
   ['lp.s4v', 'lp.s4l', 'ti-lock'],
-];
-
-const PAINS = [
-  ['ti-filter-off', 'lp.w1t', 'lp.w1s'],
-  ['ti-file-off', 'lp.w2t', 'lp.w2s'],
-  ['ti-copy', 'lp.w3t', 'lp.w3s'],
 ];
 
 const FEATURES = [
@@ -28,6 +23,13 @@ const FEATURES = [
   ['ti-mail', 'lp.f6t', 'lp.f6s'],
   ['ti-brand-whatsapp', 'lp.f7t', 'lp.f7s'],
   ['ti-shield-lock', 'lp.f8t', 'lp.f8s'],
+];
+
+// The core message: Mwandishi AI writes two documents, not one.
+const CAN_WRITE = [
+  ['ti-file-text', 'lp.c1t', 'lp.c1s'],
+  ['ti-mail', 'lp.c2t', 'lp.c2s'],
+  ['ti-copy', 'lp.c3t', 'lp.c3s'],
 ];
 
 const STEPS = [
@@ -45,6 +47,8 @@ const FAQS = [
   ['lp.q5', 'lp.a5'],
   ['lp.q6', 'lp.a6'],
   ['lp.q7', 'lp.a7'],
+  ['lp.q8', 'lp.a8'],
+  ['lp.q9', 'lp.a9'],
 ];
 
 // Template names, descriptions and previews come from the store via
@@ -62,6 +66,8 @@ function SectionHead({ eyebrow, title, sub, center }) {
 export default function Landing() {
   const { t, lang, setLang } = useLang();
   const { theme, toggle } = useTheme();
+  // Beat split for the headline: animate up to the first comma, pause, then continue.
+  const h1Comma = t('lp.h1a').indexOf(',');
   const [openFaq, setOpenFaq] = React.useState(0);
 
   const tpls = TEMPLATES;
@@ -77,6 +83,7 @@ export default function Landing() {
               <span>{t('lp.fTitle')}</span>
             </Link>
             <div className="d-none d-lg-flex align-items-center gap-1">
+              <a className="nav-link" href="#can">{t('lp.navCan')}</a>
               <a className="nav-link" href="#features">{t('lp.features')}</a>
               <a className="nav-link" href="#how">{t('lp.how')}</a>
               <a className="nav-link" href="#templates">{t('lp.tpl')}</a>
@@ -117,12 +124,27 @@ export default function Landing() {
         <div className="container">
           <div className="row align-items-center g-5">
             <div className="col-12 col-lg-7">
-              <span className="lp-badge">
-                <i className="ti ti-sparkles"></i>
-                <span>{t('lp.badge')}</span>
-              </span>
-              <h1 className="lp-title mt-3">
-                {t('lp.h1a')}<br />
+              <h1 className="lp-title">
+                {t('lp.h1aPre')}{' '}
+                <SplitText
+                  text={t('lp.h1a')}
+                  tag="span"
+                  className="lp-h1a"
+                  loop
+                  loopDelay={2.5}
+                  pauseAfter={h1Comma > 0 ? h1Comma : null}
+                  pauseFor={0.15}
+                  delay={25}
+                  duration={0.6}
+                  ease="power3.out"
+                  splitType="chars"
+                  from={{ opacity: 0, y: 40 }}
+                  to={{ opacity: 1, y: 0 }}
+                  threshold={0.1}
+                  rootMargin="-100px"
+                  textAlign="left"
+                />
+                <br />
                 <em>{t('lp.h1b')}</em>
               </h1>
               <p className="lp-lead mb-4">{t('lp.sub')}</p>
@@ -183,13 +205,13 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* ----------------------------------------------------------- problem */}
-      <section className="lp-section lp-section-alt">
+      {/* ---------------------------------------------------------- features */}
+      <section className="lp-section lp-section-alt" id="features">
         <div className="container">
-          <SectionHead eyebrow={t('lp.why')} title={t('lp.whySub')} />
+          <SectionHead eyebrow={t('lp.features')} title={t('lp.featT')} sub={t('lp.featS')} center />
           <div className="row g-4">
-            {PAINS.map(([icon, title, body]) => (
-              <div className="col-12 col-md-4" key={title}>
+            {FEATURES.map(([icon, title, body]) => (
+              <div className="col-12 col-sm-6 col-lg-4" key={title}>
                 <div className="lp-card">
                   <span className="ic"><i className={`ti ${icon}`}></i></span>
                   <h3>{t(title)}</h3>
@@ -201,13 +223,13 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ---------------------------------------------------------- features */}
-      <section className="lp-section" id="features">
+      {/* ------------------------------------------------- what the AI writes */}
+      <section className="lp-section" id="can">
         <div className="container">
-          <SectionHead eyebrow={t('lp.features')} title={t('lp.featT')} sub={t('lp.featS')} center />
+          <SectionHead eyebrow={t('lp.navCan')} title={t('lp.canT')} sub={t('lp.canS')} center />
           <div className="row g-4">
-            {FEATURES.map(([icon, title, body]) => (
-              <div className="col-12 col-sm-6 col-lg-4" key={title}>
+            {CAN_WRITE.map(([icon, title, body]) => (
+              <div className="col-12 col-md-4" key={title}>
                 <div className="lp-card">
                   <span className="ic"><i className={`ti ${icon}`}></i></span>
                   <h3>{t(title)}</h3>
@@ -287,6 +309,9 @@ export default function Landing() {
                     </div>
                   ))}
                 </div>
+                <Link to="/privacy" className="legal-link d-inline-block mt-3">
+                  {t('lp.privLink')} <i className="ti ti-arrow-right"></i>
+                </Link>
               </div>
               <div className="col-12 col-lg-4 text-lg-end">
                 <Link to="/new-cv" className="btn btn-light btn-lg">
@@ -361,6 +386,10 @@ export default function Landing() {
               </div>
             </div>
             <div className="col-12 col-md-6 text-md-end">
+              <Link to="/privacy" className="legal-link">{t('lp.fPrivacy')}</Link>
+              <span className="mx-2">·</span>
+              <Link to="/terms" className="legal-link">{t('lp.fTerms')}</Link>
+              <span className="mx-2">·</span>
               <span>{t('lp.fRights')} </span>
               <span>© 2026 </span>
             </div>

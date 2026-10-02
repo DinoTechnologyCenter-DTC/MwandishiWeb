@@ -336,3 +336,65 @@ $lp-shadow-hover: 0 2px 4px rgba(23, 23, 23, .08), 0 16px 40px rgba(23, 23, 23, 
   .lp-title em { color: lighten($primary, 8%); }
   .lp-band { background: linear-gradient(135deg, darken($primary, 6%), #7a2a12); }
 }
+
+// -- legal pages (privacy policy, terms of use) -----------------------------
+.legal-body {
+  padding: 2.5rem 0 3.5rem;
+}
+
+.legal-doc {
+  max-width: 46rem;
+  margin: 0 auto;
+}
+
+.legal-meta {
+  color: $gray-500;
+  font-size: .85rem;
+  margin-bottom: 1.5rem;
+}
+
+.legal-intro {
+  font-size: 1.05rem;
+  margin-bottom: 2rem;
+}
+
+.legal-sec {
+  margin-bottom: 1.75rem;
+
+  h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: .5rem;
+  }
+
+  p {
+    color: $gray-700;
+    margin-bottom: .5rem;
+  }
+
+  ul {
+    margin: .5rem 0 0;
+    padding-left: 1.15rem;
+  }
+
+  li {
+    color: $gray-700;
+    margin-bottom: .3rem;
+  }
+}
+
+.legal-link {
+  color: inherit;
+  text-decoration: none;
+
+  &:hover,
+  &:focus {
+    text-decoration: underline;
+  }
+}
+
+[data-bs-theme="dark"] {
+  .legal-meta { color: $gray-400; }
+  .legal-sec p,
+  .legal-sec li { color: $gray-300; }
+}

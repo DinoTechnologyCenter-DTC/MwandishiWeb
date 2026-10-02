@@ -200,5 +200,35 @@ check('generator: full address block renders sender lines and contact',
   && /Mawasiliano: \+255 616 196 332/.test(fourLine));
 
 
+// ---- every t('key') used in the app must exist in BOTH locales ----
+// Catches raw keys leaking into the UI (e.g. a heading added without its paragraph).
+{
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const roots = ['src/pages', 'src/components'];
+  const files = roots.flatMap((r) => fs.readdirSync(r)
+    .filter((f) => f.endsWith('.jsx'))
+    .map((f) => path.join(r, f)));
+  const used = new Set();
+  for (const f of files) {
+    const src = fs.readFileSync(f, 'utf8');
+    for (const m of src.matchAll(/\bt\(\s*['"]([a-z][a-zA-Z0-9]*\.[a-zA-Z0-9_]+)['"]\s*\)/g)) used.add(m[1]);
+  }
+  const missingEn = [...used].filter((k) => !(k in i.STR.en));
+  const missingSw = [...used].filter((k) => !(k in i.STR.sw));
+  check(`all ${used.size} t() keys exist in EN`, missingEn.length === 0);
+  check(`all ${used.size} t() keys exist in SW`, missingSw.length === 0);
+  if (missingEn.length) console.log('  missing EN:', missingEn.join(', '));
+  if (missingSw.length) console.log('  missing SW:', missingSw.join(', '));
+
+  // key arrays (LegalDoc-style section tables) must resolve in both locales too
+  const tblKeys = ['pv.s1h', 'pv.s2h', 'pv.s3h', 'pv.s4h', 'pv.s5h', 'pv.s6h', 'pv.s7h', 'pv.s7p',
+    'pv.s8h', 'pv.s9h', 'pv.s10h', 'tm.s1h', 'tm.s2h', 'tm.s3h', 'tm.s4h', 'tm.s5h', 'tm.s6h',
+    'tm.s7h', 'tm.s8h', 'tm.s9h', 'tm.s10h'];
+  const bad = tblKeys.filter((k) => !(k in i.STR.en) || !(k in i.STR.sw));
+  check('legal page section keys resolve in both locales', bad.length === 0);
+  if (bad.length) console.log('  bad:', bad.join(', '));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
