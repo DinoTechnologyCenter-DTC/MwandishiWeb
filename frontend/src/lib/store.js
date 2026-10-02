@@ -110,10 +110,16 @@ export function deleteLetter(id) {
 export function buildLetter({ cvName, jobTitle, company, manager, lang }) {
   const jt = jobTitle || 'the advertised position';
   const co = company || 'your organisation';
+  // The generator can be used with no CV and no name typed yet, so never emit
+  // "Mimi, ," or a dangling signature line: use a neutral phrase instead.
+  const nm = String(cvName || '').trim();
+  // With no name the "I, <name>," opening collapses entirely; substituting a
+  // pronoun produced "I, I, wish to apply" and "Mimi, mimi, ninaomba".
+  const sign = nm || (lang === 'SW' ? 'Mimi' : 'Your Name');
   if (lang === 'SW') {
-    return `${fmtDate(new Date())}\n${manager || 'Meneja wa Ajira'}\n${co}\nDar es Salaam, Tanzania\n\nNdugu Meneja,\n\nYAH: MAOMBI YA KAZI YA ${jt.toUpperCase()}\n\nMimi, ${cvName}, ninaomba kazi ya ${jt} kama ilivyotangazwa. Wasifu wangu (CV) nilioambatanisha unaeleza elimu, ujuzi na uzoefu wangu unaohusiana na kazi hii.\n\nNina bidii, nina uwezo wa kujifunza haraka na niko tayari kuchangia ${co}. Nitafurahi kupata fursa ya kujadili maombi yangu kwenye usaili.\n\nWako mtiifu,\n${cvName}\nViambatanisho: CV`;
+    return `${fmtDate(new Date())}\n${manager || 'Meneja wa Ajira'}\n${co}\nDar es Salaam, Tanzania\n\nNdugu Meneja,\n\nYAH: MAOMBI YA KAZI YA ${jt.toUpperCase()}\n\n${nm ? `Mimi, ${nm}, ninaomba` : 'Ninaomba'} kazi ya ${jt} kama ilivyotangazwa. Wasifu wangu (CV) nilioambatanisha unaeleza elimu, ujuzi na uzoefu wangu unaohusiana na kazi hii.\n\nNina bidii, nina uwezo wa kujifunza haraka na niko tayari kuchangia ${co}. Nitafurahi kupata fursa ya kujadili maombi yangu kwenye usaili.\n\nWako mtiifu,\n${sign}\nViambatanisho: CV`;
   }
-  return `${fmtDate(new Date())}\n${manager || 'The Hiring Manager'}\n${co}\nDar es Salaam, Tanzania\n\nDear ${manager ? manager : 'Sir/Madam'},\n\nRE: APPLICATION FOR THE POSITION OF ${jt.toUpperCase()}\n\nI, ${cvName}, wish to apply for the above position as advertised. My CV, attached herewith, outlines my education, skills and experience relevant to this role.\n\nI am hardworking, quick to learn and ready to contribute to ${co}. I would welcome the opportunity to discuss my application at an interview.\n\nYours faithfully,\n${cvName}\nAttachments: CV`;
+  return `${fmtDate(new Date())}\n${manager || 'The Hiring Manager'}\n${co}\nDar es Salaam, Tanzania\n\nDear ${manager ? manager : 'Sir/Madam'},\n\nRE: APPLICATION FOR THE POSITION OF ${jt.toUpperCase()}\n\n${nm ? `I, ${nm}, wish to apply` : 'I wish to apply'} for the above position as advertised. My CV, attached herewith, outlines my education, skills and experience relevant to this role.\n\nI am hardworking, quick to learn and ready to contribute to ${co}. I would welcome the opportunity to discuss my application at an interview.\n\nYours faithfully,\n${sign}\nAttachments: CV`;
 }
 
 export function fmtDate(d) {
@@ -665,25 +671,199 @@ export const SAMPLE_CV = {
 };
 
 // ---- application letter renderer (Barua) ----
+// Letter layout follows the Tanzanian formal-letter flow: a right-aligned
+// sender block, a left-aligned recipient block, an indented salutation, a
+// centred subject line, a justified body with a first-line indent, then a
+// right-aligned closing block.
 export function letterToHTML(l) {
+  // The date belongs to the right-aligned sender block, as its last line.
+  const sender = [l.sender, ...(l.senderLines || []), l.date].filter(Boolean);
+  const to = [l.recipient, ...String(l.address || '').split('\n')].filter(Boolean);
   return `
-    <div class="cv-item lt-date">${esc(l.date)}</div>
-    <div class="cv-item"><strong>${esc(l.recipient)}</strong><br>${String(l.address || '').split('\n').map((a) => esc(a)).join('<br>')}</div>
-    <div class="cv-item"><strong>${esc(l.ref)}</strong></div>
-    ${(l.body || []).map((p) => `<p>${esc(p)}</p>`).join('')}
-    <div class="cv-item">${esc(l.close)},<br><strong>${esc(l.name)}</strong><br><span class="cv-dates">${esc(l.attachments)}</span></div>`;
+    <div class="lt-block lt-right lt-sender">${sender.map((x) => `<div>${esc(x)}</div>`).join('')}</div>
+    <div class="lt-block lt-left lt-to">${to.map((x) => `<div>${esc(x)}</div>`).join('')}</div>
+    ${l.salutation ? `<div class="lt-block lt-salute">${esc(l.salutation)}</div>` : ''}
+    ${l.ref ? `<div class="lt-block lt-subject">${esc(l.ref)}</div>` : ''}
+    ${(l.body || []).map((x) => `<p class="lt-para">${esc(x)}</p>`).join('')}
+    <div class="lt-block lt-center lt-close">
+      <div>${esc(l.close)}</div>
+      ${l.signature ? `<div>${esc(l.signature)}</div>` : ''}
+      <div>${esc(l.name)}</div>
+      ${l.contact ? `<div class="lt-contact">${esc(l.contact)}</div>` : ''}
+    </div>`;
 }
 
 export const SAMPLE_LETTER = {
-  date: '12/01/2026',
-  recipient: 'Meneja wa Ajira',
-  address: 'CRDB Bank\nDar es Salaam, Tanzania',
-  ref: 'YAH: MAOMBI YA KAZI YA TELLER',
+  sender: 'DATIVA LUCAS',
+  senderLines: ['S.L.P 15101', 'TEMEKE', 'DAR ES SALAAM'],
+  date: '28/09/2026',
+  recipient: 'HUMAN RESOURCE',
+  address: 'MOFAT COMPANY LIMITED,\nS.L.P 19875,\nDAR ES SALAAM.',
+  salutation: 'NDG,',
+  ref: 'YAH: MAOMBI YA NAFASI YA KAZI YA PASSENGER SERVICE OFFICER',
   body: [
-    'Mimi, Amina Juma, ninaomba kazi ya Teller kama ilivyotangazwa. Wasifu wangu (CV) nilioambatanisha unaeleza elimu, ujuzi na uzoefu wangu unaohusiana na kazi hii.',
-    'Nina bidii, nina uwezo wa kujifunza haraka na niko tayari kuchangia CRDB Bank. Nitafurahi kupata fursa ya kujadili maombi yangu kwenye usaili.',
+    'Rejea mada tajwa hapo juu, mimi ni mkazi wa kata Charambe mwenye umri wa miaka 23. Nimeandika barua hii kwako Meneja wa Rasilimali Watu kuomba nafasi ya kazi katika kampuni yako.',
+    'Mimi nina nia na uwezo wa kufanya kazi kwa bidii, kufuata taratibu na maelekezo ya kazi, kushughulikia changamoto za wateja kwa utulivu na kuhakikisha huduma inayotolewa kwa abiria inakuwa ya kiwango kizuri.',
+    'Pia niko tayari kujifunza zaidi na kuendelea ujuzi wangu kulingana na mahitaji ya kampuni. Kwa heshima naomba kuwasilisha maombi yangu ya nafasi ya kazi ya Passenger Service Officer katika kampuni yako, nimeambatanisha nakala za vyeti pamoja na CV.',
+    'Nitashukuru iwapo ombi langu litakubaliwa.',
   ],
-  close: 'Wako mtiifu',
-  name: 'Amina Juma',
-  attachments: 'Viambatanisho: CV',
+  close: 'Wako katika ujenzi wa Taifa',
+  signature: 'D.Lucas',
+  name: 'Dativa Lucas.',
+  contact: 'Mawasiliano: +255 616 196 332',
 };
+
+// The stylesheet that carries the formal-letter layout into the PDF (Chromium)
+// and DOCX (LibreOffice) renderers. Both backends wrap html+css the same way,
+// so one sheet serves both. Page margins come from .cv-sheet padding because
+// the PDF endpoint forces its own 10mm Chromium margin over any @page rule.
+export function letterExportCSS() {
+  return `@page { size: A4; margin: 0; }
+body { margin: 0; padding: 0; background: #fff; }
+.cv-sheet, .tpl-letter {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 16pt;
+  color: #000;
+  background: #fff;
+  padding: 1in;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.lt-block { margin: 0 0 10pt; }
+.lt-right { text-align: right; }
+.lt-left { text-align: left; }
+.lt-center { text-align: center; }
+.lt-sender { line-height: 30.7pt; margin-bottom: 15pt; }
+.lt-salute { text-indent: 24pt; }
+.lt-subject { text-align: center; margin-bottom: 12pt; }
+.lt-para { margin: 0 0 10pt; text-align: justify; text-indent: 66pt; }
+.lt-to > div, .lt-close > div { line-height: 16pt; }
+.lt-to > div:not(:last-child), .lt-close > div:not(:last-child) { margin-bottom: 10pt; }
+.lt-close { margin-top: 12pt; }
+.lt-contact { margin-top: 6pt; }`;
+}
+
+export function letterSheetHTML(inner) {
+  return `<div class="cv-sheet tpl-letter">${inner}</div>`;
+}
+
+// Split a plain-text letter into its formal parts. One parser serves three
+// callers: the preview, the exporters and the Custom editor, so a field edited
+// in the editor always reaches the rendered sheet.
+export function parseLetterParts(text) {
+  const empty = { date: '', to: [], salutation: '', subject: '', paras: [], closing: [] };
+  const blocks = String(text || '').split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  if (!blocks.length) return empty;
+  const rows = (b) => b.split('\n').map((x) => x.trim()).filter(Boolean);
+  const first = (b) => rows(b)[0] || '';
+  const isSubject = (b) => /^(yah\s*:|re\s*:|subject\s*:)/i.test(first(b));
+  const isSalute = (b) => rows(b).length === 1 && first(b).length <= 42 && /[,،.]$/.test(first(b)) && !isSubject(b);
+  const isClose = (b) => /^(wako|yours|your sincerely|salamu|regards|best regards)/i.test(first(b));
+
+  const head = rows(blocks[0]);
+  const hasDate = head.length > 1;
+  const rest = blocks.slice(1);
+  const salutation = (rest.find(isSalute) || '').trim();
+  const subject = (rest.find(isSubject) || '').trim();
+  const mid = rest.filter((b) => b !== salutation && b !== subject);
+  const closeAt = mid.findIndex(isClose);
+
+  const to = hasDate ? head.slice(1) : head;
+  const paras = (closeAt === -1 ? mid : mid.slice(0, closeAt)).map((b) => b.replace(/\s*\n\s*/g, ' '));
+
+  // A single unclassified block is prose the user typed, not a mailing address.
+  // Keep it in the body so the Custom editor opens on something editable.
+  if (!hasDate && !salutation && !subject && !paras.length && !mid.length && to.length === 1) {
+    return { ...empty, paras: [to[0]] };
+  }
+
+  return {
+    date: hasDate ? head[0] : '',
+    to,
+    salutation,
+    subject,
+    paras,
+    closing: closeAt === -1 ? [] : rows(mid.slice(closeAt).join('\n\n')),
+  };
+}
+
+// Inverse of parseLetterParts. Blank parts are dropped so a half-filled editor
+// never emits runs of empty lines into the letter.
+export function composeLetterParts(p) {
+  const blocks = [
+    [p.date, ...(p.to || [])].filter(Boolean).join('\n'),
+    p.salutation,
+    p.subject,
+    ...(p.paras || []).filter(Boolean),
+    (p.closing || []).filter(Boolean).join('\n'),
+  ];
+  return blocks.filter((b) => String(b).trim()).join('\n\n').trim();
+}
+
+// Render the plain-text letter through the formal-letter layout: sender/date
+// block right, recipient left, indented salutation, centred subject, justified
+// body, closing block centred.
+export function plainLetterToHTML(text, meta = {}) {
+  const p = parseLetterParts(text);
+  if (!p.date && !p.to.length && !p.subject && !p.salutation && !p.paras.length && !p.closing.length) return '';
+  const sender = [meta.sender, ...(meta.senderLines || []), p.date].filter(Boolean);
+  return `
+    ${sender.length ? `<div class="lt-block lt-right lt-sender">${sender.map((x) => `<div>${esc(x)}</div>`).join('')}</div>` : ''}
+    ${p.to.length ? `<div class="lt-block lt-left lt-to">${p.to.map((x) => `<div>${esc(x)}</div>`).join('')}</div>` : ''}
+    ${p.salutation ? `<div class="lt-block lt-salute">${esc(p.salutation)}</div>` : ''}
+    ${p.subject ? `<div class="lt-block lt-subject">${esc(p.subject)}</div>` : ''}
+    ${p.paras.map((x) => `<p class="lt-para">${esc(x)}</p>`).join('')}
+    ${p.closing.length ? `<div class="lt-block lt-center lt-close">${p.closing.map((x) => `<div>${esc(x)}</div>`).join('')}${meta.contact ? `<div class="lt-contact">${esc(meta.contact)}</div>` : ''}</div>` : ''}`;
+}
+
+// Model output is not trustworthy formatting-wise: strip code fences, markdown
+// emphasis and chat preambles so parseLetterParts sees only the letter.
+export function sanitizeLetter(raw) {
+  // Anything that is not a string cannot be laid out, and guessing would put
+  // "42" into the recipient block.
+  if (typeof raw !== 'string') return '';
+  let s = raw.trim();
+  s = s.replace(/^\s*```[a-z]*\s*/i, '').replace(/\s*```\s*$/, '');
+  s = s.replace(/^\s*(here(?:'s| is)[^\n:]{0,80}:|cover letter:?|letter:?)\s*/i, '');
+  s = s.split('\n')
+    .map((r) => r
+      .replace(/\*\*/g, '')
+      .replace(/(^|\s)\*([^*\n]+)\*(\s|$)/g, '$1$2$3')
+      .replace(/^#{1,6}\s*/, '')
+      .replace(/^[-*]\s+(?=\S)/, '')
+      .trimEnd())
+    .join('\n');
+  return s.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// Instruction for the letter endpoint. The layout contract is spelled out
+// because parseLetterParts keys off blank lines and the RE:/YAH: prefix.
+export function letterPrompt({ name, jobTitle, company, manager, lang, ad, bg, kws }) {
+  const sw = String(lang).toUpperCase() === 'SW';
+  const shape = [
+    'Reply with ONLY the letter text. No markdown, no code fences, no commentary, no labels.',
+    'Use exactly this layout, with one blank line between blocks:',
+    'Block 1, one line each: today\'s date (DD/MM/YYYY), the hiring manager or department,',
+    `the company name, the company address or city.`,
+    'Block 2: a greeting ending in a comma.',
+    `Block 3: a subject line starting "${sw ? 'YAH' : 'RE'}:".`,
+    'Block 4-6: two or three short prose paragraphs. The first states the role being applied',
+    'for and why. The next gives concrete evidence of fit. The last thanks them and asks for',
+    'an interview.',
+    'Block 7: a sign-off ending in a comma, then the full name on its own line, then',
+    `"${sw ? 'Viambatanisho' : 'Attachments'}: CV" on its own line, written in ${sw ? 'Kiswahili' : 'English'}.`,
+  ].join('\n');
+  const facts = [
+    `Applicant name: ${name || '(unknown)'}`,
+    `Job title: ${jobTitle || '(not stated)'}`,
+    `Company: ${company || '(not stated)'}`,
+    `Hiring manager: ${manager || '(not stated - address it as Sir/Madam)'}`,
+    `Write the letter in ${sw ? 'Kiswahili' : 'English'}.`,
+    kws && kws.length ? `Requirements worth echoing: ${kws.join(', ')}.` : '',
+    bg ? `Applicant background (use only what is relevant): ${String(bg).slice(0, 800)}` : '',
+    ad ? `Job advert (use only what is relevant): ${String(ad).slice(0, 1500)}` : '',
+  ].filter(Boolean).join('\n');
+  return `${shape}\n\n${facts}`;
+}

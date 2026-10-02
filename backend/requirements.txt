@@ -2,3 +2,4 @@ fastapi>=0.115,<0.117
 uvicorn[standard]>=0.30,<0.35
 playwright>=1.44,<1.50
 python-dotenv>=1.0,<2.0
+python-docx==1.2.0

@@ -1,0 +1,338 @@
+// Landing page — public marketing shell for Mwandishi.
+// Everything is namespaced under .lp so it cannot leak into the builder UI.
+
+$lp-radius: 14px;
+$lp-shadow: 0 1px 2px rgba(23, 23, 23, .06), 0 8px 24px rgba(23, 23, 23, .06);
+$lp-shadow-hover: 0 2px 4px rgba(23, 23, 23, .08), 0 16px 40px rgba(23, 23, 23, .12);
+
+.lp {
+  background: var(--bs-body-bg);
+
+  // -- top bar ----------------------------------------------------------
+  &-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background: var(--bs-body-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    backdrop-filter: saturate(180%) blur(8px);
+
+    .navbar-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      font-weight: 700;
+      color: var(--bs-emphasis-color);
+    }
+
+    .nav-link {
+      color: var(--bs-secondary-color);
+      font-weight: 500;
+      border-radius: 8px;
+      padding: .35rem .7rem;
+
+      &:hover { color: var(--bs-emphasis-color); background: var(--bs-tertiary-bg); }
+    }
+
+    .lp-lang {
+      font-size: .8rem;
+      font-weight: 600;
+      padding: .3rem .6rem;
+    }
+  }
+
+  // -- hero -------------------------------------------------------------
+  &-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 5rem 0 4.5rem;
+    background:
+      radial-gradient(60rem 30rem at 15% -10%, rgba($primary, .14), transparent 60%),
+      radial-gradient(45rem 26rem at 95% 0%, rgba($cyan, .12), transparent 55%);
+
+    @media (max-width: 767.98px) { padding: 3.25rem 0 3rem; }
+  }
+
+  &-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8rem;
+    font-weight: 600;
+    color: $primary;
+    background: rgba($primary, .1);
+    border: 1px solid rgba($primary, .22);
+    border-radius: 999px;
+    padding: .3rem .8rem;
+  }
+
+  &-title {
+    font-size: clamp(2rem, 5.2vw, 3.35rem);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    margin-bottom: 1rem;
+
+    em {
+      font-style: normal;
+      color: $primary;
+    }
+  }
+
+  &-lead {
+    font-size: 1.1rem;
+    color: var(--bs-secondary-color);
+    max-width: 40rem;
+  }
+
+  // Faux CV card next to the copy — purely decorative, mirrors the builder.
+  &-preview {
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $lp-radius;
+    box-shadow: $lp-shadow;
+    padding: 1.4rem;
+
+    .lp-pv-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      padding-bottom: .8rem;
+      border-bottom: 2px solid $primary;
+    }
+
+    .lp-pv-name { font-weight: 700; line-height: 1.15; }
+    .lp-pv-role { font-size: .78rem; color: var(--bs-secondary-color); }
+    .lp-pv-contact { font-size: .66rem; color: $gray-500; margin-top: .25rem; }
+
+    .lp-pv-sec {
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: .09em;
+      color: $primary;
+      margin: .9rem 0 .35rem;
+    }
+
+    .lp-pv-line {
+      height: .38rem;
+      border-radius: 3px;
+      background: var(--bs-tertiary-bg);
+      margin-bottom: .3rem;
+
+      &.w-90 { width: 90%; }
+      &.w-75 { width: 75%; }
+      &.w-60 { width: 60%; }
+    }
+  }
+
+  // -- generic section rhythm -------------------------------------------
+  &-section { padding: 4.5rem 0; }
+  &-section-alt { background: var(--bs-tertiary-bg); }
+
+  &-eyebrow {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: $primary;
+    margin-bottom: .5rem;
+  }
+
+  &-h2 {
+    font-size: clamp(1.5rem, 3.2vw, 2.1rem);
+    font-weight: 700;
+    letter-spacing: -.015em;
+    margin-bottom: .6rem;
+  }
+
+  &-sub2 {
+    color: var(--bs-secondary-color);
+    max-width: 44rem;
+  }
+
+  // -- stat strip --------------------------------------------------------
+  &-stat {
+    border-left: 2px solid rgba($primary, .35);
+    padding-left: .85rem;
+
+    .v { font-weight: 700; font-size: 1.05rem; line-height: 1.2; }
+    .l { font-size: .82rem; color: var(--bs-secondary-color); }
+  }
+
+  // -- cards -------------------------------------------------------------
+  &-card {
+    height: 100%;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $lp-radius;
+    padding: 1.5rem;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: $lp-shadow-hover;
+      border-color: rgba($primary, .35);
+    }
+
+    h3 { font-size: 1.02rem; font-weight: 700; margin: .9rem 0 .4rem; }
+    p { font-size: .9rem; color: var(--bs-secondary-color); margin: 0; }
+
+    .ic {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      border-radius: 11px;
+      color: $primary;
+      background: rgba($primary, .1);
+    }
+  }
+
+  // -- numbered steps ----------------------------------------------------
+  &-step {
+    position: relative;
+    padding-top: .25rem;
+
+    .n {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: .95rem;
+      color: #fff;
+      background: $primary;
+      box-shadow: 0 0 0 6px rgba($primary, .12);
+      margin-bottom: .9rem;
+    }
+
+    h3 { font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
+    p { font-size: .9rem; color: var(--bs-secondary-color); margin: 0; }
+  }
+
+  // -- template cards ----------------------------------------------------
+  &-tpl {
+    display: block;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: $lp-radius;
+    padding: 1.25rem;
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: $lp-shadow-hover;
+      border-color: rgba($primary, .5);
+      color: inherit;
+    }
+
+    h3 { font-size: .98rem; font-weight: 700; margin-bottom: .35rem; }
+    p { font-size: .85rem; color: var(--bs-secondary-color); margin-bottom: .7rem; }
+    .best { font-size: .78rem; color: var(--bs-secondary-color); }
+    .best b { color: var(--bs-emphasis-color); font-weight: 600; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+    .tag {
+      font-size: .68rem;
+      font-weight: 600;
+      padding: .12rem .45rem;
+      border-radius: 5px;
+      color: $primary;
+      background: rgba($primary, .1);
+    }
+  }
+
+  // -- privacy band ------------------------------------------------------
+  &-band {
+    border-radius: $lp-radius;
+    padding: 2.5rem 2rem;
+    color: #fff;
+    background: linear-gradient(135deg, $primary, #b8411f);
+
+    h2 { font-weight: 700; margin-bottom: .6rem; }
+    p { opacity: .92; margin-bottom: 1.25rem; }
+
+    .tick {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-weight: 600;
+      margin-bottom: .5rem;
+
+      i { font-size: 1.15rem; }
+    }
+  }
+
+  // -- FAQ ---------------------------------------------------------------
+  &-faq {
+    .accordion-item {
+      border: 1px solid var(--bs-border-color);
+      border-radius: $lp-radius !important;
+      margin-bottom: .65rem;
+      overflow: hidden;
+    }
+
+    .accordion-button {
+      font-weight: 600;
+      padding: 1rem 1.15rem;
+      background: var(--bs-body-bg);
+
+      &:not(.collapsed) { color: var(--bs-emphasis-color); background: transparent; box-shadow: none; }
+      &::after { background-size: .8rem; }
+    }
+
+    .accordion-body {
+      color: var(--bs-secondary-color);
+      font-size: .92rem;
+      padding: 0 1.15rem 1.15rem;
+    }
+  }
+
+  // -- final call to action ---------------------------------------------
+  &-cta {
+    text-align: center;
+    padding: 4rem 1rem;
+    border-radius: 18px;
+    background: radial-gradient(40rem 20rem at 50% -30%, rgba($primary, .12), transparent 70%), var(--bs-tertiary-bg);
+
+    h2 { font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 700; margin-bottom: .6rem; }
+    p { color: var(--bs-secondary-color); max-width: 34rem; margin: 0 auto 1.5rem; }
+  }
+
+  // -- footer ------------------------------------------------------------
+  &-foot {
+    border-top: 1px solid var(--bs-border-color);
+    padding: 2rem 0;
+    font-size: .88rem;
+    color: var(--bs-secondary-color);
+
+    a { color: var(--bs-secondary-color); text-decoration: none; &:hover { color: $primary; } }
+  }
+}
+
+[data-bs-theme="dark"] {
+  .lp-preview {
+    background: $gray-900;
+    border-color: $gray-800;
+  }
+
+  .lp-card,
+  .lp-tpl,
+  .lp-faq .accordion-item {
+    background: $gray-900;
+    border-color: $gray-800;
+  }
+
+  .lp-nav { background: rgba($gray-900, .92); border-bottom-color: $gray-800; }
+  .lp-section-alt { background: $gray-950; }
+  .lp-title em { color: lighten($primary, 8%); }
+  .lp-band { background: linear-gradient(135deg, darken($primary, 6%), #7a2a12); }
+}

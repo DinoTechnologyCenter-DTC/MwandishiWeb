@@ -102,7 +102,7 @@ export default function Topbar({ collapsed, onToggleSidebar, onOpenMobile }) {
                     </div>
                   </div>
                   <div className="p-3 d-flex flex-column gap-1 small lh-lg">
-                    <Link to="/" onClick={() => setOpenMenu(null)}><span>{t('nav.mycvs')}</span></Link>
+                    <Link to="/dashboard" onClick={() => setOpenMenu(null)}><span>{t('nav.mycvs')}</span></Link>
                     <Link to="/new-cv" onClick={() => setOpenMenu(null)}><span>{t('nav.newcv')}</span></Link>
                     <Link to="/templates" onClick={() => setOpenMenu(null)}><span>{t('nav.templates')}</span></Link>
                     <Link to="/cover-letters" onClick={() => setOpenMenu(null)}><span>{t('nav.letters')}</span></Link>

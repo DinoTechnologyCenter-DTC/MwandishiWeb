@@ -20,14 +20,14 @@ export default function Sidebar({ collapsed, mobileShow, onNavigate, onOpenSoon,
   return (
     <aside id="sidebar" className={`sidebar${collapsed ? ' collapsed' : ''}${mobileShow ? ' mobile-show' : ''}`}>
       <div className="logo-area">
-        <NavLink to="/" className="d-inline-flex" onClick={onNavigate}>
+        <NavLink to="/dashboard" className="d-inline-flex" onClick={onNavigate}>
           <img src={logoUrl} alt="" width="24" />
           <span className="logo-text ms-2 fw-bold text-primary">Mwandishi</span>
         </NavLink>
       </div>
       <ul className="nav flex-column">
         <li className="px-4 py-2"><small className="nav-text">Mwandishi</small></li>
-        <Item to="/" icon="ti-files" labelKey="nav.mycvs" fallback="My CVs" onNavigate={onNavigate} />
+        <Item to="/dashboard" icon="ti-files" labelKey="nav.mycvs" fallback="My CVs" onNavigate={onNavigate} />
         <Item to="/templates" icon="ti-layout-grid" labelKey="nav.templates" fallback="Templates" onNavigate={onNavigate} />
         <Item to="/new-cv" icon="ti-plus" labelKey="nav.newcv" fallback="New CV" onNavigate={onNavigate} />
         <Item to="/cover-letters" icon="ti-mail" labelKey="nav.letters" fallback="Cover Letters" onNavigate={onNavigate} />
@@ -40,6 +40,12 @@ export default function Sidebar({ collapsed, mobileShow, onNavigate, onOpenSoon,
         </li>
         <li className="px-4 pt-4 pb-2"><small className="nav-text">{t('nav.account')}</small></li>
         <Item to="/account" icon="ti-user-circle" labelKey="nav.myaccount" fallback="My Account" onNavigate={onNavigate} />
+        <li className="mt-2 pt-2 border-top">
+          <NavLink to="/" end onClick={onNavigate} className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+            <i className="ti ti-home"></i>
+            <span className="nav-text">{t('nav.home')}</span>
+          </NavLink>
+        </li>
       </ul>
     </aside>
   );

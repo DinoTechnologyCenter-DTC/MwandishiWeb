@@ -101,7 +101,7 @@ export function NotFound() {
           <h1 className="display-1 fw-bold text-primary mb-2">404</h1>
           <h2 className="card-title h4 mb-3">Page Not Found</h2>
           <p className="text-muted mb-4">Sorry, the page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
-          <Link to="/" className="btn btn-primary">Go to My CVs</Link>
+          <Link to="/dashboard" className="btn btn-primary">Go to My CVs</Link>
         </div>
       </div>
     </div>

@@ -208,9 +208,28 @@
 .tpl-exact .cv-exact-name .last { color: var(--cv-accent); font-weight: 700; }
 .tpl-exact .cv-exact-role { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .tpl-exact .cv-item { break-inside: avoid; }
-// Application letter layout
-.tpl-letter .lt-date { text-align: right; color: $gray-500; }
-.tpl-letter p { margin-bottom: 8px; }
+// Application letter layout (Tanzanian formal-letter flow: Times New Roman
+// 12pt on 1-inch margins, 16pt leading, sender right / recipient left,
+// centred subject, justified body with a 66pt first-line indent, closing right)
+.tpl-letter {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12pt;
+  line-height: 16pt;
+  color: #000;
+  padding: 1in;
+}
+.tpl-letter .lt-block { margin: 0 0 10pt; }
+.tpl-letter .lt-right { text-align: right; }
+.tpl-letter .lt-left { text-align: left; }
+.tpl-letter .lt-center { text-align: center; }
+.tpl-letter .lt-sender { line-height: 30.7pt; margin-bottom: 15pt; }
+.tpl-letter .lt-salute { text-indent: 24pt; }
+.tpl-letter .lt-subject { text-align: center; margin-bottom: 12pt; }
+.tpl-letter .lt-para { margin: 0 0 10pt; text-align: justify; text-indent: 66pt; }
+.tpl-letter .lt-to > div, .tpl-letter .lt-close > div { line-height: 16pt; }
+.tpl-letter .lt-to > div:not(:last-child), .tpl-letter .lt-close > div:not(:last-child) { margin-bottom: 10pt; }
+.tpl-letter .lt-close { margin-top: 12pt; }
+.tpl-letter .lt-contact { margin-top: 6pt; }
 .theme-swatch { border: 2px solid transparent; }
 .theme-swatch.active { outline: 2px solid $primary; outline-offset: 2px; }
 
@@ -308,3 +327,118 @@
   [data-bs-theme="dark"] .cv-sheet .cv-dates { color: $gray-500 !important; }
   [data-bs-theme="dark"] .cv-sheet .skill-chip { background: $gray-100 !important; border-color: $gray-200 !important; }
 }
+
+// ---- job-advert image dropzone (cover letters AI dialog) ----
+.dropzone {
+  border: 1.5px dashed $gray-300;
+  border-radius: 8px;
+  padding: .75rem;
+  text-align: center;
+  cursor: pointer;
+  background: $gray-50;
+  transition: border-color .15s ease-in-out, background-color .15s ease-in-out;
+
+  .dropzone-icon { font-size: 1.4rem; color: $gray-400; display: block; margin-bottom: .15rem; }
+  small { font-size: $font-xs; }
+
+  &:hover, &:focus-visible { border-color: $primary; background: rgba($primary, .04); outline: none; }
+  &.is-over { border-color: $primary; background: rgba($primary, .1); }
+  &.is-over .dropzone-icon { color: $primary; }
+}
+
+.shot-grid { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.shot {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid $border-color;
+  background: $gray-100;
+
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .shot-x {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 1.25rem;
+    height: 1.25rem;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: rgba($gray-900, .65);
+    color: #fff;
+    font-size: .7rem;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover { background: $danger; }
+  }
+}
+
+// ---- AI status text (cover letters dialog) ----
+// Port of kokonutui's AI Text Loading: gradient shimmer + crossfade, in CSS.
+.ai-load {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem .5rem;
+  min-height: 3.5rem;
+  align-items: center;
+}
+
+.ai-load-track {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: .5rem 1rem;
+  text-align: center;
+  overflow: hidden;
+}
+
+.ai-load-text {
+  display: inline-block;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 1.15rem;
+  background-image: linear-gradient(100deg, $gray-900 20%, $gray-400 42%, $gray-900 64%);
+  background-size: 200% 100%;
+  background-position: 200% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation:
+    ai-load-shimmer 2.5s linear infinite,
+    ai-load-in .3s ease-out both;
+}
+
+@keyframes ai-load-shimmer {
+  from { background-position: 200% center; }
+  to   { background-position: -200% center; }
+}
+
+@keyframes ai-load-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-load-text {
+    animation: none;
+    background-image: none;
+    -webkit-text-fill-color: $gray-900;
+    color: $gray-900;
+  }
+}
+
+// ---- centre the live letter preview within its column ----
+#cvCol .cv-sheet {
+  margin-left: auto;
+  margin-right: auto;
+}
+

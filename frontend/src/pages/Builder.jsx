@@ -441,10 +441,19 @@ export default function Builder({ initialMode }) {
   };
   const doDoc = async () => {
     persistRef.current();
-    const name = `${(data.personal.fullName || '').trim() || 'My'}-CV.doc`;
+    const base = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
     const exact = template === 'exact';
-    const ok = await downloadFromBackend('docx', { html: currentExportHTML(true), css: exact ? '' : currentExportCSS(), filename: name });
-    if (!ok) downloadStyledDoc(name, currentExportHTML(true), exact ? '' : currentExportCSS());
+    // Send the structured CV first: the backend builds the .docx natively, which
+    // keeps the accent rules, shading and uppercase that an HTML round-trip
+    // through LibreOffice silently drops. The ATS "exact" template is left on
+    // the legacy path because it is already table-based, which is the one thing
+    // LibreOffice converts faithfully.
+    const ok = await downloadFromBackend('docx', {
+      data: exact ? null : data, theme, template,
+      html: currentExportHTML(true), css: exact ? '' : currentExportCSS(),
+      filename: `${base}.doc`,
+    });
+    if (!ok) downloadStyledDoc(`${base}.doc`, currentExportHTML(true), exact ? '' : currentExportCSS());
     thankOnce();
   };
   const doWa = (e) => {
@@ -523,7 +532,7 @@ export default function Builder({ initialMode }) {
               <p className="mb-0"><span>{t('bld.intro')}</span> <span className="text-secondary small">{saveState}</span></p>
             </div>
             <div className="d-flex gap-2 flex-wrap">
-              <Link to="/" className="btn btn-outline-secondary btn-sm"><i className="ti ti-arrow-left"></i> <span>{t('bld.mycvs')}</span></Link>
+              <Link to="/dashboard" className="btn btn-outline-secondary btn-sm"><i className="ti ti-arrow-left"></i> <span>{t('bld.mycvs')}</span></Link>
               <a href="#cvSheet" className="btn btn-outline-secondary btn-sm d-lg-none"><i className="ti ti-eye"></i> <span>{t('bld.preview')}</span></a>
             </div>
           </div>

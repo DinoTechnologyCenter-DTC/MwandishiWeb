@@ -1,16 +1,23 @@
 """Mwandishi export backend (FastAPI) — real files, no browser print dialog.
 
-POST /api/export/pdf  { html, css, filename } -> application/pdf (A4, exact colors)
-POST /api/export/docx { html, css, filename } -> Word .docx
-GET  /api/health -> { ok, pdf, docx }
+POST /api/export/pdf  { html, css, filename }            -> A4 PDF
+POST /api/export/docx { data, theme, template, filename } -> .docx
+                       { html, css, filename }            -> .docx (legacy fallback)
+GET  /api/health -> { ok, pdf, docx, ai }
 
-PDF renders the exact HTML/CSS the site shows via headless Chrome.
-DOCX converts the same package through LibreOffice, so both files match
-the website by construction (single source: the sheet markup + live CSS).
+PDF renders the exact HTML/CSS the site shows via headless Chrome, because CSS
+only describes layout and Chrome is already the engine that draws the preview.
+
+DOCX is built natively with python-docx. The obvious route — feed the same HTML
+to LibreOffice — loses too much: its importer has no mapping for paragraph
+borders, fills or text-transform, so the accent rule under each heading, the
+skill-chip backgrounds and the uppercasing all vanished, and it names the font
+without embedding it so Word re-flows everything. See docx_render.py. The
+LibreOffice path is kept only as a fallback for clients that send HTML.
 
 System needs (already on this box, override with env):
   Chrome/Chromium  -> CHROME_PATH (default /usr/bin/google-chrome)
-  LibreOffice      -> SOFFICE_BIN (default soffice on PATH)
+  LibreOffice      -> SOFFICE_BIN (default soffice on PATH) — legacy fallback only
 
 Run:
   python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
@@ -56,6 +63,12 @@ class ExportReq(BaseModel):
     html: str = ""
     css: str = ""
     filename: str = "document"
+    # Structured CV payload. When present the .docx is built natively instead of
+    # round-tripping the HTML through LibreOffice, which silently drops borders,
+    # fills and text-transform. Older clients that only send html/css still work.
+    data: dict | None = None
+    theme: dict | None = None
+    template: str = "graduate"
 
 
 class DraftReq(BaseModel):
@@ -164,8 +177,42 @@ async def export_pdf(req: ExportReq):
 
 @app.post("/api/export/docx")
 async def export_docx(req: ExportReq):
+    # Preferred path: build the OOXML directly. LibreOffice's HTML importer only
+    # maps a small CSS subset, so an HTML round-trip loses every paragraph
+    # border, fill and uppercasing, and only names (never embeds) the font.
+    if req.data:
+        from docx_render import render_docx
+        try:
+            blob = render_docx(req.data, req.theme or {}, req.template or "graduate")
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(500, f"docx render failed: {str(e)[:300]}")
+        return Response(
+            content=blob,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name(req.filename, ".docx")}"'},
+        )
+
     if not req.html.strip():
-        raise HTTPException(400, "html required")
+        raise HTTPException(400, "html or data required")
+
+    # Formal application letters keep their layout only if built natively: the
+    # LibreOffice round-trip below flattens text-align, text-indent and
+    # font-family. Detect the lt-* markup and render it with python-docx.
+    try:
+        import letter_docx
+        if letter_docx.looks_like_letter(req.html):
+            spec = letter_docx.parse(req.html)
+            blob = letter_docx.render(spec)
+            return Response(
+                content=blob,
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                headers={"Content-Disposition": f'attachment; filename="{safe_name(req.filename, ".docx")}"'},
+            )
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"letter docx render failed: {str(e)[:300]}")
+
     if shutil.which(SOFFICE_BIN) is None:
         raise HTTPException(500, "libreoffice not available")
     tmp = tempfile.mkdtemp(prefix="mrcv-")

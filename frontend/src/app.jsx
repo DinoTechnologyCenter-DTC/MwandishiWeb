@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LangProvider, ThemeProvider } from './context.jsx';
 import Layout from './components/Layout.jsx';
+import Landing from './pages/Landing.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Templates from './pages/Templates.jsx';
 import Letters from './pages/Letters.jsx';
@@ -14,8 +15,12 @@ export default function App() {
     <ThemeProvider>
       <LangProvider>
         <Routes>
+          {/* Public marketing front door — no app chrome. */}
+          <Route path="/" element={<Landing />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            {/* Old entry point, kept working for existing bookmarks. */}
+            <Route path="/my-cvs" element={<Navigate to="/dashboard" replace />} />
             <Route path="/templates" element={<Templates />} />
             <Route path="/new-cv/mwandishi-ai" element={<Builder key="ai" initialMode="ai" />} />
             <Route path="/new-cv/manual" element={<Builder key="manual" initialMode="manual" />} />
