@@ -8,6 +8,7 @@ import {
   normalizeTZPhone, parseLevel, withExportPatch,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
+import AITextLoading from '../components/AITextLoading.jsx';
 import logoUrl from '../assets/images/logo-icon.svg';
 
 const TPL_DEFAULTS = { graduate: '#E66239', government: '#00C951', banking: '#E66239', general: '#E66239', clinical: '#244655', exact: '#244655' };
@@ -101,6 +102,7 @@ export default function Builder({ initialMode }) {
   const [msgs, setMsgs] = React.useState([]);
   const [chips, setChips] = React.useState([]);
   const [chatInput, setChatInput] = React.useState('');
+  const [aiStatus, setAiStatus] = React.useState(null); // { texts, step, total }
   const chatRef = React.useRef({ step: -1, name: '', job: '', level: 'student' });
   const convoRef = React.useRef(null);
   const aiReqRef = React.useRef(0);
@@ -179,7 +181,6 @@ export default function Builder({ initialMode }) {
     setMsgs((arr) => [...arr, m]);
     return m.id;
   };
-  const dropMsg = (id) => setMsgs((arr) => arr.filter((m) => m.id !== id));
   React.useEffect(() => {
     try {
       const doc = document.documentElement;
@@ -190,12 +191,15 @@ export default function Builder({ initialMode }) {
 
   const chatAdd = (who, html) => pushMsg(who, html, null);
   const chatSay = (text) => pushMsg('user', null, text);
-  const chatTyping = () => pushMsg('bot', '<div class="bubble-bot typing"><span></span><span></span><span></span></div>');
+
+  // Status text always names the request that is genuinely in flight, never a
+  // rotating guess. `step`/`total` are set only while sections are applied.
+  const busy = (textKey, step, total) => setAiStatus({ texts: [t(textKey)], step, total });
 
   const chatAsk = (html, chipList = []) => {
     setChips(chipList.map((c, i) => ({ key: `c${i}`, label: c.label, v: c.v, ai: false })));
-    const tid = chatTyping();
-    later(() => { dropMsg(tid); chatAdd('bot', html); }, 600);
+    busy('ai.thinking');
+    later(() => { setAiStatus(null); chatAdd('bot', html); }, 600);
   };
   const renderOptionChips = (text) => {
     const items = [...String(text || '').matchAll(/^\s*(\d+)[.)]\s+(.+)$/gm)].slice(0, 5);
@@ -235,7 +239,7 @@ export default function Builder({ initialMode }) {
 
   const runGeneration = (input) => {
     const jobTitle = input.job || 'General Worker';
-    chatAdd('bot', t('chat.generating'));
+    busy('chat.generating');
     later(async () => {
       const ai = await draftViaBackend({ ...input, job: jobTitle, lang: lang === 'sw' ? 'SW' : 'EN' });
       const fresh = ai || aiDraft({ name: input.name, job: jobTitle, level: input.level, about: input.about }, lang === 'sw' ? 'SW' : 'EN');
@@ -256,15 +260,17 @@ export default function Builder({ initialMode }) {
       const revealStep = () => {
         if (i >= stages.length) {
           setAiReveal(null);
+          setAiStatus(null);
           chatAdd('bot', `${t('chat.done')}<br><button class="btn btn-sm btn-primary mt-2" data-chat-expand="1"><i class="ti ti-arrows-maximize"></i> ${t('preview.expand')}</button>`);
           const btn = document.getElementById('aiExpandBtn');
           if (btn) btn.classList.remove('d-none');
           return;
         }
-        const stageKey = stages[i][0];
-        const stageLabel = stages[i][1];
+        const [stageKey, stageLabel] = stages[i];
+        // The loader now names the section actually being applied, with a counter,
+        // instead of appending a separate log line per stage.
+        busy(stageLabel, i + 1, stages.length);
         setAiReveal((r) => [...(r || []), stageKey]);
-        chatAdd('bot', `<small class="text-secondary">${t(stageLabel)}</small>`);
         i += 1;
         later(revealStep, 750);
       };
@@ -288,12 +294,13 @@ export default function Builder({ initialMode }) {
       setChatInput('');
       setChips([]);
       convo.push({ role: 'user', content: v });
-      const stopId = chatTyping();
+      busy('ai.waitReply');
       const req = (aiReqRef.current += 1);
       (async () => {
         const out = await chatViaBackend(convo, lang === 'sw' ? 'SW' : 'EN');
+        // A newer request already owns the indicator; only the latest one clears it.
         if (req !== aiReqRef.current) return;
-        dropMsg(stopId);
+        setAiStatus(null);
         if (!out) { scriptFromSlots(aiSlotsRef.current); return; }
         aiSlotsRef.current = { name: out.name || '', job: out.job || '', level: out.level || '', country: out.country || '', region: out.region || '', about: out.about || '' };
         if (out.reply) {
@@ -661,6 +668,19 @@ export default function Builder({ initialMode }) {
                       )}
                   </div>
                 ))}
+                {aiStatus && (
+                  <div className="d-flex mb-3">
+                    <div className="d-flex gap-2">
+                      <div className="chat-avatar"><i className="ti ti-sparkles"></i></div>
+                      <div className="bubble-bot">
+                        <AITextLoading texts={aiStatus.texts} className="ai-load-compact" />
+                        {aiStatus.total ? (
+                          <small className="text-secondary d-block text-center mt-1">{t('ai.step')} {aiStatus.step}/{aiStatus.total}</small>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="d-flex gap-1 flex-wrap mb-2">
                 {chips.map((c) => (
@@ -683,6 +703,9 @@ export default function Builder({ initialMode }) {
                 <button type="submit" id="chatSend" className="btn btn-primary flex-shrink-0" title="Send"><i className="ti ti-send"></i></button>
               </form>
             </div>
+              <small className="ai-disclaimer d-block text-center mt-2 mb-1">
+                <i className="ti ti-alert-triangle me-1"></i>{t('ai.disclaimer')}
+              </small>
             </div>
           ) : null}
         </div>
