@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLang } from '../context.jsx';
 import { useStore } from '../hooks.js';
-import { deleteCV, duplicateCV, fmtDate, waLink } from '../lib/store.js';
+import { deleteCV, duplicateCV, fmtDate, updateCV, exportPayloadFor, shareCVWhatsApp } from '../lib/store.js';
 
 function templateName(slug) {
   return { graduate: 'Graduate', government: 'Govt/NGO', banking: 'Banking', general: 'General', clinical: 'Clinical', exact: 'Exact Replica', barua: 'Barua' }[slug] || slug;
@@ -18,11 +18,30 @@ export default function Dashboard() {
   const { cvs, letters, refresh } = useStore();
   const avg = cvs.length ? Math.round(cvs.reduce((a, c) => a + (c.match || 0), 0) / cvs.length) : 0;
   const dls = cvs.reduce((a, c) => a + (c.downloads || 0), 0);
+  // Rendering the PDF takes several seconds, so guard against repeat taps
+  // stacking up exports and downloads.
+  const [sharing, setSharing] = React.useState('');
   const steps = [
     { done: cvs.length > 0, text: t('idx.s1') },
     { done: letters.length > 0, text: t('idx.s2') },
     { done: dls > 0, text: t('idx.s3') },
   ];
+  const share = async (cv) => {
+    if (sharing) return;
+    setSharing(cv.id);
+    try {
+      await shareCVWhatsApp({
+        cv,
+        payload: exportPayloadFor(cv),
+        onShared: () => {
+          updateCV(cv.id, { downloads: (cv.downloads || 0) + 1 });
+          refresh();
+        },
+      });
+    } finally {
+      setSharing('');
+    }
+  };
   const del = (id) => {
     if (!window.confirm(t('idx.delConfirm'))) return;
     deleteCV(id);
@@ -87,7 +106,16 @@ export default function Dashboard() {
                   <div className="d-flex gap-1 flex-shrink-0">
                     <Link to={`/new-cv?id=${encodeURIComponent(cv.id)}`} className="btn btn-sm btn-outline-primary" title="Open"><i className="ti ti-edit"></i></Link>
                     <button className="btn btn-sm btn-outline-secondary" onClick={() => dup(cv.id)} title="Duplicate"><i className="ti ti-copy"></i></button>
-                    <a className="btn btn-sm btn-outline-success" target="_blank" rel="noopener noreferrer" title="Share via WhatsApp" href={waLink(`My CV: ${cv.name} — made with Mwandishi`)}><i className="ti ti-brand-whatsapp"></i></a>
+                    <button
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => share(cv)}
+                      disabled={!!sharing || !cv.data}
+                      title={cv.data ? 'Share via WhatsApp' : 'Add CV details first'}
+                    >
+                      {sharing === cv.id
+                        ? <><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span></>
+                        : <i className="ti ti-brand-whatsapp"></i>}
+                    </button>
                     <button className="btn btn-sm btn-outline-danger" onClick={() => del(cv.id)} title="Delete"><i className="ti ti-trash"></i></button>
                   </div>
                 </div>

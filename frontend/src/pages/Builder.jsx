@@ -3,17 +3,15 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLang } from '../context.jsx';
 import {
   blankData, createCV, getCV, updateCV, TEMPLATE_LABELS, COUNTRIES, esc,
-  waLink, downloadStyledDoc, downloadFromBackend, draftViaBackend,
+  downloadStyledDoc, downloadFromBackend, draftViaBackend,
   chatViaBackend, collectSheetCSS, cvThemedHTML, cvExactHTML, cvToHTML,
   normalizeTZPhone, parseLevel, withExportPatch,
+  FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import AITextLoading from '../components/AITextLoading.jsx';
 import logoUrl from '../assets/images/logo-leaf.png';
 
-const TPL_DEFAULTS = { graduate: '#008000', government: '#00C951', banking: '#008000', general: '#008000', clinical: '#244655', exact: '#244655' };
-const FONTS = { poppins: "'Poppins',sans-serif", georgia: "Georgia,Gelasio,'Times New Roman',serif", arial: "Arial,'Liberation Sans',Helvetica,sans-serif" };
-const SIZES = { s: '12px', m: '13px', l: '14.5px' };
 const TZ_CITIES = ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Mbeya', 'Morogoro', 'Tanga', 'Moshi', 'Iringa', 'Tabora', 'Kigoma', 'Shinyanga', 'Mtwara', 'Lindi', 'Singida', 'Bukoba', 'Musoma', 'Zanzibar', 'Kariakoo', 'Ubungo', 'Kinondoni', 'Temeke'];
 const SKILL_WORDS = ['computer', 'driving', 'teaching', 'cooking', 'tailoring', 'electrical', 'plumbing', 'networking', 'office', 'communication', 'leadership', 'teamwork', 'customer', 'sales', 'cashier', 'typing', 'english', 'kiswahili', 'first aid', 'carpentry', 'welding', 'hairdressing', 'photography', 'accounting'];
 
@@ -428,19 +426,23 @@ export default function Builder({ initialMode }) {
     color: theme.color,
     fontStack: FONTS[theme.font] || FONTS.poppins,
     size: SIZES[theme.size] || SIZES.m,
-  }) || exportCSS());
+  }) || exportCSS(theme, template));
   const currentExportHTML = (singleFont) => cvThemedHTML(data, {
     color: theme.color,
     fontStack: FONTS[theme.font] || FONTS.poppins,
     size: SIZES[theme.size] || SIZES.m,
   }, template, { singleFont: !!singleFont });
-  const doPrint = async () => {
-    persistRef.current();
-    const name = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
+  // One place builds the PDF export payload, so print and share can never drift.
+  const pdfPayload = () => {
     const exact = template === 'exact';
     const sheet = document.getElementById('cvSheet');
     const html = exact ? currentExportHTML(false) : (sheet ? sheet.outerHTML : currentExportHTML(false));
-    const ok = await downloadFromBackend('pdf', { html, css: exact ? '' : currentExportCSS(), filename: name });
+    return { html, css: exact ? '' : currentExportCSS() };
+  };
+  const doPrint = async () => {
+    persistRef.current();
+    const name = `${(data.personal.fullName || '').trim() || 'My'}-CV`;
+    const ok = await downloadFromBackend('pdf', { ...pdfPayload(), filename: name });
     const id = cvIdRef.current;
     if (id) { const cv = getCV(id); if (cv) updateCV(id, { downloads: (cv.downloads || 0) + 1 }); }
     if (!ok) window.print();
@@ -463,10 +465,22 @@ export default function Builder({ initialMode }) {
     if (!ok) downloadStyledDoc(`${base}.doc`, currentExportHTML(true), exact ? '' : currentExportCSS());
     thankOnce();
   };
-  const doWa = (e) => {
+  const bumpDownloads = () => {
+    const id = cvIdRef.current;
+    if (id) { const cv = getCV(id); if (cv) updateCV(id, { downloads: (cv.downloads || 0) + 1 }); }
+  };
+  /* Sends the actual PDF where the OS supports it. The decision lives in
+     shareCVWhatsApp so the Dashboard behaves identically; we only pass our
+     live-sheet payload, which exports at higher fidelity than the DOM-free
+     one it falls back to. */
+  const doWa = async (e) => {
     e.preventDefault();
     persistRef.current();
-    window.open(waLink(`My CV: ${(data.personal.fullName || '').trim() || 'Untitled'} — ${(data.personal.title || '').trim()}\n${plainText(data).slice(0, 500)}`), '_blank', 'noopener');
+    await shareCVWhatsApp({
+      cv: { data, template },
+      payload: pdfPayload(),
+      onShared: () => { bumpDownloads(); thankOnce(); },
+    });
   };
   const [thanksOpen, setThanksOpen] = React.useState(false);
   const lottieRef = React.useRef(null);
@@ -846,42 +860,4 @@ function completeness(d) {
     d.referees.filter((r) => (r.name || '').trim() && (r.phone || '').trim()).length >= 2,
   ];
   return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-}
-
-function plainText(d) {
-  const p = d.personal;
-  const out = [p.fullName, p.title, [p.phone, p.email, p.address].filter(Boolean).join(' | '), ''];
-  if (p.summary) out.push('SUMMARY', p.summary, '');
-  if (d.experience.some((e) => e.role)) {
-    out.push('EXPERIENCE');
-    d.experience.forEach((e) => { if (e.role || e.employer) { out.push(`${e.role} — ${e.employer} (${e.start} - ${e.end})`); String(e.bullets).split('\n').forEach((b) => { if (b.trim()) out.push(`- ${b.trim()}`); }); } });
-    out.push('');
-  }
-  if (d.education.some((e) => e.school)) {
-    out.push('EDUCATION');
-    d.education.forEach((e) => { if (e.school || e.qualification) out.push(`${e.qualification} — ${e.school} (${e.start} - ${e.end})`); });
-    out.push('');
-  }
-  if (String(d.skills).trim()) out.push('SKILLS', String(d.skills).trim(), '');
-  const refs = d.referees.filter((r) => (r.name || '').trim());
-  if (refs.length) { out.push('REFEREES'); refs.forEach((r) => out.push(`${r.name}${r.title ? `, ${r.title}` : ''}${r.phone ? ` — ${r.phone}` : ''}`)); }
-  return out.join('\n');
-}
-
-function exportCSS(theme, template) {
-  const accent = theme.color || '#008000';
-  const font = FONTS[theme.font] || FONTS.poppins;
-  const size = SIZES[theme.size] || SIZES.m;
-  let extra = '';
-  if (template === 'graduate') extra += '.cv-name{color:' + accent + ';}';
-  if (template === 'banking') extra += '.cv-head{background:#262626;color:#fff;padding:12px 14px;}.cv-head .cv-name{color:#fff;}.cv-head .cv-contact{color:#d4d4d4;}.cv-title{color:#F0B100;}';
-  if (template === 'government') extra += '.cv-head{text-align:center;}.cv-sec{border-bottom:3px double ' + accent + ';}';
-  if (template === 'general') extra += '.cv-sec{border:none;border-left:4px solid ' + accent + ';padding-left:8px;}';
-  return 'body{font-family:' + font + ';font-size:' + size + ';color:#262626;line-height:1.55;}'
-    + '.cv-name{font-size:22px;font-weight:700;color:#171717;margin:0;}'
-    + '.cv-title{font-size:13px;font-weight:700;color:' + accent + ';margin-bottom:4px;}'
-    + '.cv-contact{font-size:12px;color:#737373;margin-bottom:12px;}'
-    + '.cv-sec{font-size:12px;font-weight:700;text-transform:uppercase;color:#171717;border-bottom:2px solid ' + accent + ';padding-bottom:2px;margin:14px 0 6px;}'
-    + '.cv-item{margin-bottom:8px;}.cv-dates{color:#737373;font-size:12px;}ul{margin:2px 0 0 18px;padding:0;}'
-    + '.skill-chip{display:inline-block;border:1px solid #e5e5e5;border-radius:20px;padding:1px 10px;margin:0 4px 4px 0;font-size:12px;}' + extra;
 }

@@ -215,9 +215,13 @@ export function backendBase() {
   }
 }
 
-export async function downloadFromBackend(kind, payload) {
+// Render an export and hand back the bytes. Split out from downloadFromBackend
+// so the share flow can reuse the very same file instead of paying for a second
+// headless-Chrome render. Returns null when the backend is unreachable so
+// callers keep the local-first fallback.
+export async function fetchExportBlob(kind, payload) {
   const base = backendBase();
-  if (!base) return false;
+  if (!base) return null;
   const ctl = new AbortController();
   const to = setTimeout(() => ctl.abort(), 25000);
   try {
@@ -227,20 +231,79 @@ export async function downloadFromBackend(kind, payload) {
       body: JSON.stringify(payload),
       signal: ctl.signal,
     });
-    if (!r.ok) return false;
+    if (!r.ok) return null;
     const blob = await r.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    // Prefer the server's filename; otherwise normalise ours to one correct
+    // extension (strip any existing one first, or "cv.pdf" becomes "cv.pdf.pdf").
+    const wantExt = kind === 'pdf' ? '.pdf' : '.docx';
     const m = (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/);
-    a.download = m ? m[1] : payload.filename || (kind === 'pdf' ? 'cv.pdf' : 'cv.docx');
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    return true;
+    const mine = payload.filename || (kind === 'pdf' ? 'cv' : 'cv');
+    const filename = m ? m[1] : mine.replace(/\.[a-z0-9]+$/i, '') + wantExt;
+    return { blob, filename };
   } catch (e) {
-    return false;
+    return null;
   } finally {
     clearTimeout(to);
+  }
+}
+
+export function saveBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+
+export async function downloadFromBackend(kind, payload) {
+  const r = await fetchExportBlob(kind, payload);
+  if (!r) return false;
+  saveBlob(r.blob, r.filename);
+  return true;
+}
+
+/* ---------------- sharing the real file ---------------- */
+// WhatsApp's click-to-chat URL carries text only, so it can never attach the
+// document. navigator.share({files}) is the one web API that hands a real file
+// to a native share sheet (WhatsApp included) — but only where the OS exposes
+// it, in practice Android Chrome and iOS Safari. Everything else falls back to
+// the text link, so callers must feature-detect with canShare rather than
+// assume navigator.share exists.
+export function canShareFile(blob, filename) {
+  try {
+    if (!navigator.share || !navigator.canShare || typeof File === 'undefined') return false;
+    return navigator.canShare({ files: [new File([blob], filename, { type: blob.type })] });
+  } catch (e) {
+    return false;
+  }
+}
+
+// Same question, answerable synchronously from a throwaway probe file. Callers
+// need this before any await: deciding whether to open a fallback window only
+// works while the click is still a user gesture, or the popup gets blocked.
+export function supportsFileShare() {
+  try {
+    if (!navigator.share || !navigator.canShare || typeof File === 'undefined') return false;
+    return navigator.canShare({
+      files: [new File([new Blob([''])], 'probe.pdf', { type: 'application/pdf' })],
+    });
+  } catch (e) {
+    return false;
+  }
+}
+
+// 'shared'  - the file reached the share sheet
+// 'cancelled' - the user closed the sheet (not an error, do not fall back)
+// 'unsupported' - no file sharing here; caller should use the text fallback
+export async function shareFile(blob, filename, text) {
+  const file = new File([blob], filename, { type: blob.type });
+  try {
+    await navigator.share({ files: [file], text, title: filename });
+    return 'shared';
+  } catch (e) {
+    if (e && e.name === 'AbortError') return 'cancelled';
+    return 'unsupported';
   }
 }
 
@@ -372,6 +435,147 @@ export const EXPORT_PATCH = `
 .skill-chip{margin:0 0 4px 0!important}
 .cv-sheet p,.cv-sheet li,.cv-sheet div{orphans:2;widows:2}
 `;
+
+// ---- shared export theme constants ----
+// These live here, not in the pages, so the Builder and the Dashboard cannot
+// drift apart and start rendering the same CV differently.
+export const TPL_DEFAULTS = { graduate: '#008000', government: '#00C951', banking: '#008000', general: '#008000', clinical: '#244655', exact: '#244655' };
+export const FONTS = { poppins: "'Poppins',sans-serif", georgia: "Georgia,Gelasio,'Times New Roman',serif", arial: "Arial,'Liberation Sans',Helvetica,sans-serif" };
+export const SIZES = { s: '12px', m: '13px', l: '14.5px' };
+
+export const DEFAULT_THEME = { color: '#008000', font: 'poppins', size: 'm' };
+
+// Old CVs saved before a field existed must still export: fill from the
+// template default rather than rendering undefined colours.
+export function themeFor(cv) {
+  const template = (cv && cv.template) || 'graduate';
+  const th = (cv && cv.theme) || {};
+  return {
+    color: th.color || TPL_DEFAULTS[template] || DEFAULT_THEME.color,
+    font: th.font || DEFAULT_THEME.font,
+    size: th.size || DEFAULT_THEME.size,
+  };
+}
+
+// Standalone stylesheet for the headless export path. Self-sufficient, so it
+// works with no rendered sheet in the DOM (the Dashboard has none).
+export function exportCSS(theme, template) {
+  const th = { ...DEFAULT_THEME, ...(theme || {}) };
+  const accent = th.color || '#008000';
+  const font = FONTS[th.font] || FONTS.poppins;
+  const size = SIZES[th.size] || SIZES.m;
+  let extra = '';
+  if (template === 'graduate') extra += '.cv-name{color:' + accent + ';}';
+  if (template === 'banking') extra += '.cv-head{background:#262626;color:#fff;padding:12px 14px;}.cv-head .cv-name{color:#fff;}.cv-head .cv-contact{color:#d4d4d4;}.cv-title{color:#F0B100;}';
+  if (template === 'government') extra += '.cv-head{text-align:center;}.cv-sec{border-bottom:3px double ' + accent + ';}';
+  if (template === 'general') extra += '.cv-sec{border:none;border-left:4px solid ' + accent + ';padding-left:8px;}';
+  return 'body{font-family:' + font + ';font-size:' + size + ';color:#262626;line-height:1.55;}'
+    + '.cv-name{font-size:22px;font-weight:700;color:#171717;margin:0;}'
+    + '.cv-title{font-size:13px;font-weight:700;color:' + accent + ';margin-bottom:4px;}'
+    + '.cv-contact{font-size:12px;color:#737373;margin-bottom:12px;}'
+    + '.cv-sec{font-size:12px;font-weight:700;text-transform:uppercase;color:#171717;border-bottom:2px solid ' + accent + ';padding-bottom:2px;margin:14px 0 6px;}'
+    + '.cv-item{margin-bottom:8px;}.cv-dates{color:#737373;font-size:12px;}ul{margin:2px 0 0 18px;padding:0;}'
+    + '.skill-chip{display:inline-block;border:1px solid #e5e5e5;border-radius:20px;padding:1px 10px;margin:0 4px 4px 0;font-size:12px;}' + extra;
+}
+
+// Seeded demo rows carry no `data` at all, and CVs saved by older builds can be
+// missing individual fields. Merging over blankData means an export can never
+// throw on a sparse record.
+export function cvDataFor(cv) {
+  const d = (cv && cv.data) || {};
+  const b = blankData();
+  const arr = (v, fallback) => (Array.isArray(v) ? v : fallback);
+  return {
+    ...b, ...d,
+    personal: { ...b.personal, ...(d.personal || {}) },
+    education: arr(d.education, b.education),
+    experience: arr(d.experience, b.experience),
+    projects: arr(d.projects, b.projects),
+    referees: arr(d.referees, b.referees),
+    skills: d.skills || '',
+  };
+}
+
+// Export payload with no DOM dependency. The Builder prefers its live sheet
+// (higher fidelity, keeps on-screen tweaks); anything else uses this.
+export function exportPayloadFor(cv) {
+  const template = (cv && cv.template) || 'graduate';
+  const theme = themeFor(cv);
+  const exact = template === 'exact';
+  return {
+    html: cvThemedHTML(cvDataFor(cv), {
+      color: theme.color,
+      fontStack: FONTS[theme.font] || FONTS.poppins,
+      size: SIZES[theme.size] || SIZES.m,
+    }, template, { singleFont: false }),
+    css: exact ? '' : exportCSS(theme, template),
+  };
+}
+
+export function plainText(raw) {
+  const d = raw || {};
+  const p = d.personal || {};
+  const experience = Array.isArray(d.experience) ? d.experience : [];
+  const education = Array.isArray(d.education) ? d.education : [];
+  const referees = Array.isArray(d.referees) ? d.referees : [];
+  const out = [p.fullName, p.title, [p.phone, p.email, p.address].filter(Boolean).join(' | '), ''];
+  if (p.summary) out.push('SUMMARY', p.summary, '');
+  if (experience.some((e) => e.role)) {
+    out.push('EXPERIENCE');
+    experience.forEach((e) => { if (e.role || e.employer) { out.push(`${e.role} — ${e.employer} (${e.start} - ${e.end})`); String(e.bullets).split('\n').forEach((b) => { if (b.trim()) out.push(`- ${b.trim()}`); }); } });
+    out.push('');
+  }
+  if (education.some((e) => e.school)) {
+    out.push('EDUCATION');
+    education.forEach((e) => { if (e.school || e.qualification) out.push(`${e.qualification} — ${e.school} (${e.start} - ${e.end})`); });
+    out.push('');
+  }
+  if (String(d.skills).trim()) out.push('SKILLS', String(d.skills).trim(), '');
+  const refs = referees.filter((r) => (r.name || '').trim());
+  if (refs.length) { out.push('REFEREES'); refs.forEach((r) => out.push(`${r.name}${r.title ? `, ${r.title}` : ''}${r.phone ? ` — ${r.phone}` : ''}`)); }
+  return out.join('\n');
+}
+
+/* Hands the real PDF to the OS share sheet where that is possible.
+   navigator.share({files}) is the only web route to a native share sheet with a
+   real attachment; wa.me itself carries text and nothing else. Desktop has no
+   file sharing, so there we open the text link (synchronously, while the click
+   is still a gesture, or the popup gets blocked) and drop the PDF into the
+   downloads for the user to attach by hand.
+
+   Callers pass their own payload so each surface can export at its own
+   fidelity, but the sharing decision lives here exactly once. */
+export async function shareCVWhatsApp({ cv, payload, onShared }) {
+  const data = cvDataFor(cv);
+  const personal = data.personal || {};
+  const who = `${(personal.fullName || '').trim() || 'Untitled'} — ${(personal.title || '').trim()}`;
+  const caption = `My CV: ${who}`;
+  const text = `${caption}\n\n${plainText(data)}`;
+  // Bare stem: the export layer owns the extension.
+  const stem = `${(personal.fullName || '').trim() || 'My'}-CV`;
+
+  if (!supportsFileShare()) {
+    window.open(waLink(text), '_blank', 'noopener');
+    const ok = await downloadFromBackend('pdf', { ...payload, filename: stem });
+    if (!ok) downloadStyledDoc(stem, payload.html, payload.css);
+    return 'fallback';
+  }
+
+  const got = await fetchExportBlob('pdf', { ...payload, filename: stem });
+  if (!got) { window.open(waLink(text), '_blank', 'noopener'); return 'fallback'; }
+
+  // With a real attachment attached, a short caption beats dumping the whole CV
+  // as text as well; the full text is for the text-only fallback.
+  const res = await shareFile(got.blob, got.filename, caption);
+  if (res === 'shared') { if (onShared) onShared(); return 'shared'; }
+  if (res === 'cancelled') return 'cancelled';
+
+  // Declined or the sheet refused the file: do not lose the CV, and still give
+  // them the text so the message is not empty.
+  saveBlob(got.blob, got.filename);
+  window.open(waLink(text), '_blank', 'noopener');
+  return 'fallback';
+}
 
 // Idempotent: safe to call on a sheet that already carries the patch.
 export function withExportPatch(css) {
