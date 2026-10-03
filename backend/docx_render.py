@@ -60,7 +60,7 @@ BANKING_NAME = "FFFFFF"
 BANKING_TITLE = "F0B100"
 BANKING_CONTACT = "D4D4D4"
 
-DEFAULT_ACCENT = "E66239"
+DEFAULT_ACCENT = "008000"   # brand green; must track frontend $brand
 DEEP_ACCENT = "244655"
 
 DATA_URL = re.compile(r"^data:image/[a-zA-Z0-9.+-]+;base64,(.+)$", re.S)

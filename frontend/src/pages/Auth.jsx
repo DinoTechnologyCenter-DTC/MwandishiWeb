@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import logoUrl from '../assets/images/logo-icon.svg';
+import logoUrl from '../assets/images/logo-leaf.png';
 
 function Brand() {
   return (

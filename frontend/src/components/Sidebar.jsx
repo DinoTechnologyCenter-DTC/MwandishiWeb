@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useLang } from '../context.jsx';
-import logoUrl from '../assets/images/logo-icon.svg';
+import logoUrl from '../assets/images/logo-leaf.png';
 
 function Item({ to, icon, labelKey, fallback, onNavigate }) {
   const { t } = useLang();

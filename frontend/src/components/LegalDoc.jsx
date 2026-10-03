@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useLang, useTheme } from '../context.jsx';
-import logoUrl from '../assets/images/logo-icon.svg';
+import logoUrl from '../assets/images/logo-leaf.png';
 
 // Shared shell for the privacy policy and terms of use. All copy lives in
 // i18n.js; pages only declare which sections they show, in order.

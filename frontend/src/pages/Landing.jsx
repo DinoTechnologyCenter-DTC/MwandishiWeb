@@ -4,7 +4,7 @@ import { useLang, useTheme } from '../context.jsx';
 import { TEMPLATES } from '../lib/store.js';
 import TemplatePreview, { useLinkFor } from '../components/TemplatePreview.jsx';
 import SplitText from '../components/SplitText.jsx';
-import logoUrl from '../assets/images/logo-icon.svg';
+import logoUrl from '../assets/images/logo-leaf.png';
 
 // Marketing copy lives in i18n.js; these tables only carry layout metadata.
 const STATS = [
@@ -70,7 +70,9 @@ export default function Landing() {
   const h1Comma = t('lp.h1a').indexOf(',');
   const [openFaq, setOpenFaq] = React.useState(0);
 
-  const tpls = TEMPLATES;
+  // The landing page is a teaser: show the first few, send the rest to
+  // /templates, which lists every format with filters and a full preview.
+  const tpls = TEMPLATES.slice(0, 3);
 
   return (
     <div className="lp">
@@ -288,7 +290,9 @@ export default function Landing() {
           <div className="text-center mt-4">
             <Link to="/templates" className="btn btn-outline-secondary">
               <i className="ti ti-layout-grid"></i>
-              <span className="ms-1">{t('lp.tplCta')}</span>
+              <span className="ms-1">
+                {t('lp.tplCta')} ({TEMPLATES.length})
+              </span>
             </Link>
           </div>
         </div>

@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mwandishi AI poster</title>
+<style>
+  /* Local Poppins so renders are identical offline (Regular/SemiBold/Bold only). */
+  @font-face { font-family:'Poppins'; font-weight:400; font-style:normal;
+    src:url('file:///home/mrdino/.fonts/Poppins-Regular.ttf') format('truetype'); }
+  @font-face { font-family:'Poppins'; font-weight:600; font-style:normal;
+    src:url('file:///home/mrdino/.fonts/Poppins-SemiBold.ttf') format('truetype'); }
+  @font-face { font-family:'Poppins'; font-weight:700; font-style:normal;
+    src:url('file:///home/mrdino/.fonts/Poppins-Bold.ttf') format('truetype'); }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ background:#8a8f98; }
+  body{ display:flex; justify-content:center; align-items:flex-start; padding:24px; }
+  /* render.py loads ?clean=1 (and print always strips these) so the grey
+     backdrop and drop shadow never end up in the PDF. */
+  body.clean{ background:#fff; padding:0; }
+  body.clean .poster{ box-shadow:none; }
+
+  /* A4 at 150 DPI. render.py prints the PDF with scale 0.64 -> exactly 210x297mm,
+     and shoots the PNG at deviceScaleFactor 2 -> exactly 2480x3508 (A4 @ 300 DPI). */
+  .poster{
+    position:relative;
+    width:1240px; height:1754px;
+    flex:none;
+    background:var(--bg);
+    font-family:var(--ff);
+    display:flex; flex-direction:column;
+    overflow:hidden;
+    box-shadow:0 18px 60px rgba(0,0,0,.45);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  .bar{ position:absolute; left:0; right:0; bottom:0; height:var(--barH); background:var(--accent); }
+
+  header{ display:flex; align-items:center; gap:var(--wmGap); }
+  .logo{ width:var(--logoW); height:auto; display:block; }
+  /* Brand lockup: the wordmark sits beside the leaf. line-height:1 keeps the
+     box tight so a large size can't push the header down the page. */
+  .wordmark{
+    font-size:var(--wmSize); font-weight:var(--wmWeight);
+    letter-spacing:var(--wmTrack); line-height:1;
+    text-transform:var(--wmCase); color:var(--ink); white-space:nowrap;
+  }
+  /* Gradient fill. background-clip:text needs -webkit-text-fill-color too, and
+     the clip only survives PDF printing when colour adjustment is forced. */
+  .wordmark.grad{
+    background-image:linear-gradient(var(--wmAng), var(--wmFrom), var(--wmTo));
+    -webkit-background-clip:text; background-clip:text;
+    color:transparent; -webkit-text-fill-color:transparent;
+  }
+
+  /* Product screenshot. height:auto keeps the source aspect, so the shot is
+     never stretched or cropped whatever screenshot is dropped in. */
+  .shot{ margin-top:var(--shotGap); }
+  .shot img{
+    display:block; width:100%; height:auto;
+    border-radius:var(--shotRadius);
+    border:var(--shotBorder) solid var(--rule);
+    box-shadow:var(--shotShadow);
+  }
+
+
+  main{ flex:1; display:flex; flex-direction:column; justify-content:center; }
+
+  h1{
+    font-size:var(--h1Size); font-weight:var(--h1Weight);
+    line-height:var(--h1Line); letter-spacing:var(--h1Track);
+    text-transform:var(--case);
+    color:var(--ink);
+    padding:0; /* set by autoFitHeadline() so descenders never clip */
+  }
+  h1 .accent{ color:var(--accent); display:block; }
+
+  .rule{ width:var(--ruleW); height:var(--ruleH); background:var(--accent); margin:var(--ruleGap) 0 0; }
+
+  ul{ list-style:none; margin:var(--featGap) 0 0; }
+  li{
+    display:flex; align-items:baseline; gap:var(--markGap);
+    font-size:var(--featSize); font-weight:var(--featWeight);
+    line-height:var(--featLine); color:var(--body);
+    margin-bottom:var(--featSpace);
+  }
+  li:last-child{ margin-bottom:0; }
+  li::before{
+    content:''; flex:none; width:var(--markW); height:var(--markH);
+    background:var(--accent); transform:translateY(calc(var(--featSize) * -.31));
+  }
+
+  footer{ border-top:var(--ruleBorder) solid var(--rule); padding-top:var(--footPad); }
+  .strip{
+    font-size:var(--stripSize); font-weight:var(--stripWeight);
+    letter-spacing:var(--stripTrack); text-transform:var(--stripCase);
+    color:var(--muted);
+  }
+
+  /* ---------------- editor panel (never printed, never screenshotted) ------------- */
+  #editor{
+    position:fixed; top:0; right:0; bottom:0; width:346px; z-index:50;
+    background:#151922; color:#e6e9ef; overflow-y:auto; font-size:13px;
+    font-family:'Poppins',system-ui,sans-serif;
+    box-shadow:-8px 0 34px rgba(0,0,0,.4);
+  }
+  #editor.hidden{ display:none; }
+  #toggle{
+    position:fixed; top:14px; right:360px; z-index:51;
+    background:#151922; color:#e6e9ef; border:0; border-radius:8px;
+    padding:9px 15px; font:600 13px 'Poppins',sans-serif; cursor:pointer;
+  }
+  #toggle.hidden{ display:none; }
+  @media print{
+    #editor,#toggle{ display:none !important; }
+    html,body{ background:#fff !important; padding:0 !important; }
+    .poster{ box-shadow:none !important; }
+  }
+
+  .phead{ position:sticky; top:0; z-index:2; background:#151922;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 16px; border-bottom:1px solid #2b313d; }
+  .phead strong{ font-size:13px; letter-spacing:.04em; }
+  button.x{ background:#E66239; color:#fff; border:0; border-radius:6px;
+    padding:5px 12px; font:600 12px 'Poppins',sans-serif; cursor:pointer; }
+  #editor h2{ font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:#8b93a3; margin:20px 16px 9px; font-weight:600; }
+  #editor section{ padding:0 16px; }
+  .row{ display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+  .row label{ flex:1; color:#b9c0cc; }
+  .row input[type=text],.row select,.row textarea{
+    width:132px; background:#0e1116; color:#e6e9ef; border:1px solid #2b313d;
+    border-radius:6px; padding:5px 7px; font:13px 'Poppins',sans-serif;
+  }
+  .row textarea{ width:100%; height:74px; resize:vertical; line-height:1.5; }
+  .row input[type=range]{ width:132px; accent-color:#E66239; }
+  .row input[type=color]{
+    width:40px; height:28px; padding:0; border:1px solid #2b313d;
+    border-radius:6px; background:none; cursor:pointer;
+  }
+  .row .val{ width:52px; text-align:right; color:#8b93a3; font-variant-numeric:tabular-nums; }
+  .btns{ display:flex; flex-wrap:wrap; gap:7px; padding:14px 16px 26px; }
+  button.act{
+    background:#E66239; color:#fff; border:0; border-radius:7px;
+    padding:8px 12px; font:600 12px 'Poppins',sans-serif; cursor:pointer;
+  }
+  button.act.ghost{ background:#242a35; color:#cfd5e0; }
+  .note{ padding:0 16px 20px; color:#79818f; line-height:1.55; }
+</style>
+</head>
+<body>
+
+<div class="poster" id="poster">
+  <header><img class="logo" src="assets/logo-leaf.png" alt="Mwandishi AI"><span class="wordmark"></span></header>
+  <main>
+    <h1><span class="l1"></span><span class="accent brand"></span></h1>
+    <div class="rule"></div>
+    <ul id="feats"></ul>
+    <div class="shot"><img id="shotImg" alt=""></div>
+  </main>
+  <footer><div class="strip"></div></footer>
+  <div class="bar"></div>
+</div>
+
+<button id="toggle" class="hidden">Edit poster</button>
+
+<aside id="editor" class="hidden">
+  <div class="phead"><strong>Poster editor</strong><button id="closeEditor" class="x">Done</button></div>
+  <h2>Language</h2>
+  <section>
+    <div class="row">
+      <label for="f-lang">Poster language</label>
+      <select id="f-lang"><option value="en">English</option><option value="sw">Kiswahili</option></select>
+    </div>
+  </section>
+
+  <h2>Colours</h2>
+  <section id="sec-colors"></section>
+
+  <h2>Headline type</h2>
+  <section id="sec-h1"></section>
+
+  <h2>Feature list type</h2>
+  <section id="sec-feat"></section>
+
+  <h2>Footer strip type</h2>
+  <section id="sec-strip"></section>
+
+  <h2>Brand lockup</h2>
+  <section id="sec-wm"></section>
+
+  <h2>Layout</h2>
+  <section id="sec-layout"></section>
+
+  <h2>Text</h2>
+  <section>
+    <div class="row"><label for="f-l1">Headline line 1</label>
+      <input type="text" id="f-l1" data-txt="l1"></div>
+    <div class="row"><label for="f-brand">Headline brand</label>
+      <input type="text" id="f-brand" data-txt="brand"></div>
+    <div class="row"><label for="f-wm">Logo wordmark</label>
+      <input type="text" id="f-wm" data-txt="wm" placeholder="Mwandishi AI"></div>
+    <div class="row"><label for="f-feats">Features (one per line)</label></div>
+    <div class="row"><textarea id="f-feats" data-txt="feats"></textarea></div>
+    <div class="row"><button class="act ghost" id="addLine">+ Add text line</button></div>
+    <div class="row"><label for="f-strip">Footer strip</label>
+      <input type="text" id="f-strip" data-txt="strip"></div>
+  </section>
+
+  <div class="btns">
+    <button class="act" id="btnDownload">Download config</button>
+    <button class="act ghost" id="btnCopy">Copy JSON</button>
+    <button class="act ghost" id="btnImport">Import…</button>
+    <button class="act ghost" id="btnReset">Reset</button>
+  </div>
+  <input type="file" id="fileImport" accept="application/json" class="hidden">
+  <div class="note">
+    Edits autosave to this browser only. Use <b>Download config</b> and drop the
+    file at <b>posters/poster.config.json</b> — <b>render.py</b> picks it up
+    automatically on the next run.
+  </div>
+</aside>
+
+<script>
+/* ============================================================================
+   DEFAULT CONFIG — every visual value the poster uses lives here.
+   render.py can override this wholesale with posters/poster.config.json.
+   ========================================================================== */
+const DEFAULTS = {
+  lang: 'en',
+  colors: {
+    bg:      '#FFFFFF',
+    ink:     '#302C4D',
+    accent:  '#008000',
+    muted:   '#657E92',
+    body:    '#4C5A67',
+    rule:    '#E3E8EC'
+  },
+  type: {
+    family:      "'Poppins', sans-serif",
+    h1Size:      84,
+    h1Weight:    700,
+    h1Line:      1.12,
+    h1Track:     -0.022,
+    case:        'none',
+    featSize:    29,
+    featWeight:  400,
+    featLine:    1.42,
+    stripSize:   19,
+    stripWeight: 600,
+    stripTrack:  0.15,
+    stripCase:   'uppercase',
+    wmSize:      34,
+    wmWeight:    600,
+    wmTrack:     -0.01,
+    wmCase:      'none',
+    wmGrad:      1,
+    wmGradFrom:  '#008000',
+    wmGradTo:    '#2FBF4B',
+    wmGradAngle: 100
+  },
+  layout: {
+    padTop: 118, padX: 104, padBottom: 104,
+    logoW: 96, barH: 12,
+    wmGap: 20, wmShow: 1,
+    shotShow: 1,
+    shotFile: 'screenshoots/Screenshot from 2026-10-03 03-46-32.png',
+    shotGap: 62,
+    shotRadius: 16,
+    shotBorder: 1,
+    shotShadow: '0 20px 46px rgba(48,44,77,.18)',
+    ruleW: 104, ruleH: 5, ruleGap: 30,
+    featGap: 64, featSpace: 26,
+    markW: 26, markH: 3, markGap: 22,
+    footPad: 26, ruleBorder: 1
+  },
+  text: {
+    en: {
+      l1: 'Write anything with',
+      brand: 'Mwandishi AI',
+      wm: 'Mwandishi AI',
+      feats: [
+        'Your CV and cover letter, written together',
+        'Free PDF & DOCX download — no watermark',
+        'English and Kiswahili'
+      ],
+      strip: 'CV • Cover letter • PDF • DOCX • EN / SW'
+    },
+    sw: {
+      l1: 'Andika chochote kwa',
+      brand: 'Mwandishi AI',
+      wm: 'Mwandishi AI',
+      feats: [
+        'CV yako na barua ya maombi, zikiandikwa pamoja',
+        'PDF na DOCX bila malipo — hakuna alama ya maji',
+        'Kiingereza na Kiswahili'
+      ],
+      strip: 'CV • Barua ya maombi • PDF • DOCX • EN / SW'
+    }
+  }
+};
+
+/* The only "stock" copy — used by Reset and by the language switcher. */
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+/* Exposed so render.py --dump-config can read the real defaults out of the
+   loaded page instead of re-implementing them (which would drift). */
+window.DEFAULTS = DEFAULTS;
+
+let cfg = clone(DEFAULTS);
+let locked = false;   // true when render.py supplied a config: no autosave
+
+/* ---------------- config sources, in priority order ---------------- */
+(function loadInitial(){
+  const q = new URLSearchParams(location.search);
+  if (window.__POSTER_CONFIG) { cfg = window.__POSTER_CONFIG; locked = true; }
+  else if (q.get('config') === 'local' && localStorage.getItem('poster.config')) {
+    try { cfg = JSON.parse(localStorage.getItem('poster.config')); } catch (e) {}
+  }
+  // quick URL overrides, handy for one-off renders
+  for (const k of ['bg','ink','accent','muted','body','rule']) {
+    const v = q.get(k); if (v) cfg.colors[k] = v;
+  }
+  if (q.get('lang')) cfg.lang = q.get('lang') === 'sw' ? 'sw' : 'en';
+})();
+
+/* ---------------- rendering ---------------- */
+function applyTheme(){
+  const p  = document.getElementById('poster');
+  const c  = cfg.colors, t = cfg.type, l = cfg.layout;
+  const set = (k,v) => p.style.setProperty(k, v);
+  set('--bg',c.bg); set('--ink',c.ink); set('--accent',c.accent);
+  set('--muted',c.muted); set('--body',c.body); set('--rule',c.rule);
+  set('--ff',t.family);
+  set('--h1Size',t.h1Size+'px'); set('--h1Weight',t.h1Weight);
+  set('--h1Line',t.h1Line); set('--h1Track',t.h1Track+'em'); set('--case',t.case);
+  set('--featSize',t.featSize+'px'); set('--featWeight',t.featWeight);
+  set('--featLine',t.featLine);
+  set('--stripSize',t.stripSize+'px'); set('--stripWeight',t.stripWeight);
+  set('--stripTrack',t.stripTrack+'em'); set('--stripCase',t.stripCase);
+  // ?? defaults: an older poster.config.json predates these keys, and
+  // render.py hands the config over wholesale without merging DEFAULTS.
+  set('--wmSize',(t.wmSize ?? 34)+'px'); set('--wmWeight',t.wmWeight ?? 600);
+  set('--wmTrack',(t.wmTrack ?? -0.01)+'em'); set('--wmCase',t.wmCase ?? 'none');
+  set('--wmGap',(l.wmGap ?? 20)+'px');
+  const wm = document.querySelector('.wordmark');
+  wm.style.display = (l.wmShow === 0 || l.wmShow === '0') ? 'none' : '';
+  wm.classList.toggle('grad', !!(t.wmGrad ?? 1));
+  set('--wmFrom',t.wmGradFrom || '#008000');
+  set('--wmTo',  t.wmGradTo   || '#2FBF4B');
+  set('--wmAng', (t.wmGradAngle ?? 100)+'deg');
+
+  const shot = document.querySelector('.shot');
+  // No file configured (e.g. an older config) must hide the frame, otherwise
+  // src="" resolves to the page itself and Chrome draws a broken-image box.
+  const hasShot = !String(l.shotFile || '').trim();
+  shot.style.display = (!hasShot && l.shotShow !== 0 && l.shotShow !== '0') ? '' : 'none';
+  set('--shotGap',(l.shotGap ?? 62)+'px');
+  set('--shotRadius',(l.shotRadius ?? 16)+'px');
+  set('--shotBorder',(l.shotBorder ?? 1)+'px');
+  set('--shotShadow',l.shotShadow ?? '0 20px 46px rgba(48,44,77,.18)');
+  set('--logoW',l.logoW+'px'); set('--barH',l.barH+'px');
+  set('--ruleW',l.ruleW+'px'); set('--ruleH',l.ruleH+'px'); set('--ruleGap',l.ruleGap+'px');
+  set('--featGap',l.featGap+'px'); set('--featSpace',l.featSpace+'px');
+  set('--markW',l.markW+'px'); set('--markH',l.markH+'px'); set('--markGap',l.markGap+'px');
+  set('--footPad',l.footPad+'px'); set('--ruleBorder',l.ruleBorder+'px');
+  p.style.padding = `${l.padTop}px ${l.padX}px ${l.padBottom}px`;
+}
+
+function applyText(){
+  const tx = cfg.text[cfg.lang] || cfg.text.en;
+  document.documentElement.lang = cfg.lang;
+  document.querySelector('.l1').textContent    = tx.l1;
+  document.querySelector('.brand').textContent = tx.brand;
+  // wm falls back to brand, so a config saved before the lockup existed (or one
+  // with the field cleared) still shows the brand name beside the logo.
+  document.querySelector('.wordmark').textContent =
+    (tx.wm && tx.wm.trim()) || tx.brand;
+  // Screenshot src comes from config, so swapping in a new capture is a
+  // one-line config change. Ignored while printing empty.
+  const img = document.getElementById('shotImg');
+  const file = String(cfg.layout.shotFile || '').trim();
+  if (file) img.src = file; else img.removeAttribute('src');
+  img.alt = (tx.wm && tx.wm.trim()) || tx.brand;
+  document.getElementById('feats').innerHTML =
+    tx.feats.filter(s => s.trim()).map(s => `<li>${escapeHtml(s)}</li>`).join('');
+  document.querySelector('.strip').textContent = tx.strip;
+  document.title = `Mwandishi AI poster (${cfg.lang.toUpperCase()})`;
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+}
+
+/* Poppins' em box (~1.393em) is taller than a tight line-height, so glyphs
+   overflow the h1 box. Measure the real ink and pad exactly that much, so the
+   tight leading is kept and descenders are never clipped at any size/font. */
+function autoFitHeadline(){
+  const h1 = document.querySelector('h1');
+  h1.style.padding = '0';
+  const box = h1.getBoundingClientRect();
+  let top = Infinity, bot = -Infinity;
+  const walk = document.createTreeWalker(h1, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walk.nextNode())) {
+    if (!n.textContent.trim()) continue;
+    const r = document.createRange();
+    r.selectNodeContents(n);
+    const b = r.getBoundingClientRect();
+    top = Math.min(top, b.top);
+    bot = Math.max(bot, b.bottom);
+  }
+  if (top === Infinity) { h1.style.padding = '0'; return; }
+  const pt = Math.max(0, Math.ceil(box.top - top));
+  const pb = Math.max(0, Math.ceil(bot - box.bottom));
+  h1.style.padding = `${pt}px 0 ${pb}px`;
+}
+
+function render(){
+  applyTheme();
+  applyText();
+  autoFitHeadline();
+  autoFitHeadline();   // second pass: padding can nudge centring
+}
+
+/* ---------------- editor ---------------- */
+const COLOR_FIELDS = [
+  ['bg','Background'], ['ink','Headline ink'], ['accent','Accent'],
+  ['muted','Footer text'], ['body','Feature text'], ['rule','Hairline']
+];
+const WEIGHTS = [[400,'Regular'],[600,'SemiBold'],[700,'Bold']];
+
+function slider(host, label, path, min, max, step, unit){
+  const [grp, key] = path.split('.');
+  const row = document.createElement('div'); row.className = 'row';
+  row.innerHTML = `<label for="s_${grp}_${key}">${label}</label>`;
+  const inp = document.createElement('input');
+  inp.type='range'; inp.id=`s_${grp}_${key}`;
+  inp.min=min; inp.max=max; inp.step=step; inp.value=cfg[grp][key];
+  inp.dataset.unit = unit || '';   // syncInputs() re-reads this on reset/import
+  const val = document.createElement('span'); val.className='val';
+  val.textContent = cfg[grp][key] + (unit||'');
+  inp.addEventListener('input', ()=>{
+    cfg[grp][key] = parseFloat(inp.value);
+    val.textContent = cfg[grp][key] + (unit||'');
+    render(); save(); syncInputs();
+  });
+  row.append(inp, val); host.appendChild(row);
+}
+
+/* One colour swatch + hex box. get/set keep it reusable for both the palette
+   and the wordmark gradient stops. */
+function colorRow(host, label, id, get, set){
+  const row = document.createElement('div'); row.className='row';
+  row.innerHTML = `<label for="${id}">${label}</label>`;
+  const col = document.createElement('input'); col.type='color'; col.id=id; col.value=get();
+  const txt = document.createElement('input');
+  txt.type='text'; txt.value=get(); txt.style.width='86px';
+  const apply=(v)=>{
+    if(!/^#[0-9a-fA-F]{6}$/.test(v)) return;
+    set(v); col.value=v; txt.value=v; render(); save();
+  };
+  col.addEventListener('input', ()=>apply(col.value));
+  txt.addEventListener('change', ()=>apply(txt.value.trim()));
+  row.append(col, txt); host.appendChild(row);
+}
+
+function buildEditor(){
+  const colors = document.getElementById('sec-colors');
+  for (const [k,label] of COLOR_FIELDS){
+    colorRow(colors, label, `c_${k}`, ()=>cfg.colors[k], v=>{ cfg.colors[k]=v; });
+  }
+
+  const h1 = document.getElementById('sec-h1');
+  slider(h1,'Size','type.h1Size',40,140,1,'px');
+  const rw=document.createElement('div'); rw.className='row';
+  rw.innerHTML='<label for="w_h1">Weight</label>';
+  const wsel=document.createElement('select'); wsel.id='w_h1';
+  for(const [v,l] of WEIGHTS){ const o=document.createElement('option');
+    o.value=v; o.textContent=l; wsel.appendChild(o); }
+  wsel.value=cfg.type.h1Weight;
+  wsel.addEventListener('change',()=>{cfg.type.h1Weight=+wsel.value;render();save();syncInputs();});
+  rw.appendChild(wsel); h1.appendChild(rw);
+  slider(h1,'Line height','type.h1Line',0.9,2,0.01);
+  slider(h1,'Letter spacing','type.h1Track',-0.08,0.3,0.002,'em');
+  const rc=document.createElement('div'); rc.className='row';
+  rc.innerHTML='<label for="c_case">Letter case</label>';
+  const csel=document.createElement('select'); csel.id='c_case';
+  for(const [v,l] of [['none','As typed'],['uppercase','UPPERCASE'],['lowercase','lowercase']]){
+    const o=document.createElement('option'); o.value=v; o.textContent=l; csel.appendChild(o); }
+  csel.value=cfg.type.case;
+  csel.addEventListener('change',()=>{cfg.type.case=csel.value;render();save();syncInputs();});
+  rc.appendChild(csel); h1.appendChild(rc);
+
+  const ft = document.getElementById('sec-feat');
+  slider(ft,'Size','type.featSize',14,60,1,'px');
+  slider(ft,'Line height','type.featLine',1,2.4,0.01);
+  slider(ft,'Gap between','layout.featSpace',0,90,1,'px');
+
+  const st = document.getElementById('sec-strip');
+  slider(st,'Size','type.stripSize',9,44,1,'px');
+  slider(st,'Letter spacing','type.stripTrack',0,0.5,0.005,'em');
+
+  const wm = document.getElementById('sec-wm');
+  const wrow = document.createElement('div'); wrow.className='row';
+  wrow.innerHTML='<label for="w_wmShow">Wordmark</label>';
+  const wshow=document.createElement('select'); wshow.id='w_wmShow';
+  for(const [v,l] of [[1,'Show'],[0,'Hide']]){ const o=document.createElement('option');
+    o.value=v; o.textContent=l; wshow.appendChild(o); }
+  wshow.addEventListener('change',()=>{cfg.layout.wmShow=+wshow.value;render();save();});
+  wrow.appendChild(wshow); wm.appendChild(wrow);
+  slider(wm,'Size','type.wmSize',0,90,1,'px');
+  const ww=document.createElement('div'); ww.className='row';
+  ww.innerHTML='<label for="w_wmWeight">Weight</label>';
+  const wwsel=document.createElement('select'); wwsel.id='w_wmWeight';
+  for(const [v,l] of WEIGHTS){ const o=document.createElement('option');
+    o.value=v; o.textContent=l; wwsel.appendChild(o); }
+  wwsel.addEventListener('change',()=>{cfg.type.wmWeight=+wwsel.value;render();save();});
+  ww.appendChild(wwsel); wm.appendChild(ww);
+  slider(wm,'Letter spacing','type.wmTrack',-0.08,0.3,0.002,'em');
+  const wc=document.createElement('div'); wc.className='row';
+  wc.innerHTML='<label for="c_wmCase">Letter case</label>';
+  const wcsel=document.createElement('select'); wcsel.id='c_wmCase';
+  for(const [v,l] of [['none','As typed'],['uppercase','UPPERCASE'],['lowercase','lowercase']]){
+    const o=document.createElement('option'); o.value=v; o.textContent=l; wcsel.appendChild(o); }
+  wcsel.addEventListener('change',()=>{cfg.type.wmCase=wcsel.value;render();save();});
+  wc.appendChild(wcsel); wm.appendChild(wc);
+  slider(wm,'Gap after logo','layout.wmGap',0,90,1,'px');
+
+  const gr=document.createElement('div'); gr.className='row';
+  gr.innerHTML='<label for="w_wmGrad">Fill</label>';
+  const gsel=document.createElement('select'); gsel.id='w_wmGrad';
+  for(const [v,l] of [[1,'Gradient'],[0,'Solid ink']]){ const o=document.createElement('option');
+    o.value=v; o.textContent=l; gsel.appendChild(o); }
+  gsel.addEventListener('change',()=>{cfg.type.wmGrad=+gsel.value;render();save();});
+  gr.appendChild(gsel); wm.appendChild(gr);
+  colorRow(wm,'Gradient from','c_wmFrom', ()=>cfg.type.wmGradFrom, v=>{ cfg.type.wmGradFrom=v; });
+  colorRow(wm,'Gradient to','c_wmTo', ()=>cfg.type.wmGradTo, v=>{ cfg.type.wmGradTo=v; });
+  slider(wm,'Gradient angle','type.wmGradAngle',0,360,1,'deg');
+
+  const ly = document.getElementById('sec-layout');
+  slider(ly,'Side margin','layout.padX',40,220,2,'px');
+  slider(ly,'Top margin','layout.padTop',40,260,2,'px');
+  slider(ly,'Logo width','layout.logoW',60,520,2,'px');
+  const sh=document.createElement('div'); sh.className='row';
+  sh.innerHTML='<label for="w_shotShow">Screenshot</label>';
+  const shsel=document.createElement('select'); shsel.id='w_shotShow';
+  for(const [v,l] of [[1,'Show'],[0,'Hide']]){ const o=document.createElement('option');
+    o.value=v; o.textContent=l; shsel.appendChild(o); }
+  shsel.addEventListener('change',()=>{cfg.layout.shotShow=+shsel.value;render();save();});
+  sh.appendChild(shsel); ly.appendChild(sh);
+  const fr=document.createElement('div'); fr.className='row';
+  fr.innerHTML='<label for="f_shotFile">Screenshot file</label>';
+  const fin=document.createElement('input'); fin.type='text'; fin.id='f_shotFile';
+  fin.style.width='150px'; fin.value=cfg.layout.shotFile||'';
+  fin.addEventListener('change',()=>{
+    cfg.layout.shotFile=fin.value.trim(); render(); save(); syncInputs(); });
+  fr.appendChild(fin); ly.appendChild(fr);
+  slider(ly,'Shot gap above','layout.shotGap',0,140,1,'px');
+  slider(ly,'Shot corner','layout.shotRadius',0,48,1,'px');
+  slider(ly,'Shot border','layout.shotBorder',0,6,1,'px');
+  slider(ly,'Rule width','layout.ruleW',20,700,2,'px');
+  slider(ly,'Bottom bar','layout.barH',0,60,1,'px');
+}
+
+/* keep every control in sync after a config load / reset / language switch */
+function syncInputs(){
+  const tx = cfg.text[cfg.lang] || cfg.text.en;
+  document.getElementById('f-lang').value = cfg.lang;
+  document.getElementById('f-l1').value    = tx.l1;
+  document.getElementById('f-brand').value = tx.brand;
+  document.getElementById('f-wm').value    = tx.wm || '';
+  document.getElementById('f-feats').value = tx.feats.join('\n');
+  document.getElementById('f-strip').value = tx.strip;
+  for (const [k] of COLOR_FIELDS){
+    const col=document.getElementById('c_'+k), txt=col && col.nextSibling;
+    if(col){ col.value=cfg.colors[k]; if(txt) txt.value=cfg.colors[k]; }
+  }
+  for (const [id,val] of [['c_wmFrom',cfg.type.wmGradFrom],['c_wmTo',cfg.type.wmGradTo]]){
+    const el=document.getElementById(id);
+    if(el){ el.value=val; if(el.nextSibling) el.nextSibling.value=val; }
+  }
+  for (const el of document.querySelectorAll('#editor input[type=range]')){
+    const [,grp,key] = el.id.split('_');
+    el.value = cfg[grp][key];
+    const v = el.parentElement.querySelector('.val');
+    if (v) v.textContent = cfg[grp][key] + (el.dataset.unit||'');
+  }
+  const w=document.getElementById('w_h1'); if(w) w.value=cfg.type.h1Weight;
+  const c=document.getElementById('c_case'); if(c) c.value=cfg.type.case;
+  const ww=document.getElementById('w_wmWeight'); if(ww) ww.value=cfg.type.wmWeight;
+  const wc=document.getElementById('c_wmCase');   if(wc) wc.value=cfg.type.wmCase;
+  const ws=document.getElementById('w_wmShow');   if(ws) ws.value=cfg.layout.wmShow;
+  const wg=document.getElementById('w_wmGrad');   if(wg) wg.value=cfg.type.wmGrad;
+  const ss=document.getElementById('w_shotShow'); if(ss) ss.value=cfg.layout.shotShow;
+  const sf=document.getElementById('f_shotFile'); if(sf) sf.value=cfg.layout.shotFile||'';
+}
+
+function currentText(){ return cfg.text[cfg.lang] || cfg.text.en; }
+
+function wireEditor(){
+  document.getElementById('f-lang').addEventListener('change', e=>{
+    cfg.lang = e.target.value === 'sw' ? 'sw' : 'en';
+    render(); save(); syncInputs();
+  });
+  document.querySelectorAll('[data-txt]').forEach(el=>{
+    const k = el.dataset.txt;
+    const handler = ()=>{
+      const tx = currentText();
+      tx[k] = (k === 'feats') ? el.value.split('\n') : el.value;
+      render(); save();
+    };
+    el.addEventListener('input', handler);
+    el.addEventListener('change', handler);
+  });
+  document.getElementById('addLine').addEventListener('click', ()=>{
+    const tx = currentText();
+    tx.feats.push('New point');
+    render(); save(); syncInputs();
+    const f = document.getElementById('f-feats');
+    f.focus(); f.setSelectionRange(f.value.length, f.value.length);
+  });
+  document.getElementById('btnReset').addEventListener('click', ()=>{
+    cfg = clone(DEFAULTS); buildEditor(); render(); save(); syncInputs();
+  });
+  document.getElementById('btnDownload').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='poster.config.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  });
+  document.getElementById('btnCopy').addEventListener('click', async (e)=>{
+    try { await navigator.clipboard.writeText(JSON.stringify(cfg,null,2));
+          e.target.textContent='Copied!'; }
+    catch(err){ e.target.textContent='Copy failed'; }
+    setTimeout(()=>{e.target.textContent='Copy JSON';},1400);
+  });
+  const file = document.getElementById('fileImport');
+  document.getElementById('btnImport').addEventListener('click',()=>file.click());
+  file.addEventListener('change', async ()=>{
+    if(!file.files[0]) return;
+    try {
+      const incoming = JSON.parse(await file.files[0].text());
+      cfg = Object.assign(clone(DEFAULTS), incoming);
+      cfg.colors = Object.assign(clone(DEFAULTS.colors), incoming.colors||{});
+      cfg.type   = Object.assign(clone(DEFAULTS.type),   incoming.type||{});
+      cfg.layout = Object.assign(clone(DEFAULTS.layout), incoming.layout||{});
+      cfg.text   = Object.assign(clone(DEFAULTS.text),   incoming.text||{});
+      buildEditor(); render(); save(); syncInputs();
+    } catch(err){ alert('Could not read that JSON file.'); }
+    file.value='';
+  });
+  const panel = document.getElementById('editor');
+  const tgl   = document.getElementById('toggle');
+  const show  = (on)=>{ panel.classList.toggle('hidden',!on);
+                        tgl.classList.toggle('hidden',on);
+                        tgl.textContent = on ? 'Hide editor' : 'Edit poster'; };
+  tgl.addEventListener('click', ()=>show(true));
+  document.getElementById('closeEditor').addEventListener('click', ()=>show(false));
+  return show;
+}
+
+function save(){
+  if (locked) return;                       // render.py owns the config
+  try { localStorage.setItem('poster.config', JSON.stringify(cfg)); } catch(e){}
+}
+
+/* ---------------- boot ---------------- */
+render();
+if (new URLSearchParams(location.search).get('clean') === '1'){
+  document.body.classList.add('clean');
+}
+if (new URLSearchParams(location.search).get('editor') === '1'){
+  buildEditor();
+  wireEditor()(true);      // open it; wireEditor() returns the show() toggler
+  syncInputs();
+} else {
+  document.getElementById('editor').classList.add('hidden');
+  document.getElementById('toggle').classList.add('hidden');
+}
+window.addEventListener('load', ()=>{ autoFitHeadline(); });
+</script>
+</body>
+</html>

@@ -151,7 +151,7 @@
 
 // Mwandishi live CV preview sheet (ATS-clean, single column)
 .cv-sheet {
-  --cv-accent: #E66239;
+  --cv-accent: #008000;
   --cv-font: 'Poppins', sans-serif;
   --cv-size: 13px;
   background: #fff;
@@ -182,7 +182,7 @@
 .tpl-government { --cv-accent: #00C951; }
 .tpl-government .cv-head { text-align: center; }
 .tpl-government .cv-sec { border-bottom: 3px double var(--cv-accent); }
-.tpl-banking { --cv-accent: #E66239; }
+.tpl-banking { --cv-accent: #008000; }
 .tpl-graduate .cv-name { color: var(--cv-accent); }
 .tpl-general .cv-sec { border-bottom: none; border-left: 4px solid var(--cv-accent); padding-left: 8px; }
 // Professional Two-Column: teal accent,

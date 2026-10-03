@@ -3,8 +3,9 @@ import { resolve } from 'path';
 import { copyFileSync } from 'fs';
 import react from '@vitejs/plugin-react';
 
-// gh-pages serves 404.html for unknown paths: duplicate the SPA entry so
-// BrowserRouter deep links (e.g. /MrCVWeb/new-cv) resolve on refresh.
+// Static hosts that serve 404.html for unknown paths need the SPA entry
+// duplicated there, or BrowserRouter deep links (e.g. /new-cv) 404 on refresh.
+// Harmless everywhere else.
 const spa404 = () => ({
   name: 'spa-404-fallback',
   closeBundle: () => {
@@ -15,9 +16,8 @@ const spa404 = () => ({
 });
 
 export default defineConfig({
-  // '/' locally; '/MrCVWeb/' for gh-pages project hosting (GHPAGES=1).
-  // Absolute base keeps deep BrowserRouter routes working in production.
-  base: process.env.GHPAGES ? '/MrCVWeb/' : '/',
+  // Served from the domain root at https://mwandishi.dtcwonders.online/
+  base: '/',
   root: resolve(__dirname, 'src'),
   plugins: [react(), spa404()],
   server: {

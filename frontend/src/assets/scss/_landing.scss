@@ -255,7 +255,7 @@ $lp-shadow-hover: 0 2px 4px rgba(23, 23, 23, .08), 0 16px 40px rgba(23, 23, 23, 
     border-radius: $lp-radius;
     padding: 2.5rem 2rem;
     color: #fff;
-    background: linear-gradient(135deg, $primary, #b8411f);
+    background: linear-gradient(135deg, $brand, $brand-700);
 
     h2 { font-weight: 700; margin-bottom: .6rem; }
     p { opacity: .92; margin-bottom: 1.25rem; }
@@ -334,7 +334,7 @@ $lp-shadow-hover: 0 2px 4px rgba(23, 23, 23, .08), 0 16px 40px rgba(23, 23, 23, 
   .lp-nav { background: rgba($gray-900, .92); border-bottom-color: $gray-800; }
   .lp-section-alt { background: $gray-950; }
   .lp-title em { color: lighten($primary, 8%); }
-  .lp-band { background: linear-gradient(135deg, darken($primary, 6%), #7a2a12); }
+  .lp-band { background: linear-gradient(135deg, $brand-600, $brand-900); }
 }
 
 // -- legal pages (privacy policy, terms of use) -----------------------------

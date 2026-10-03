@@ -9,9 +9,9 @@ import {
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import AITextLoading from '../components/AITextLoading.jsx';
-import logoUrl from '../assets/images/logo-icon.svg';
+import logoUrl from '../assets/images/logo-leaf.png';
 
-const TPL_DEFAULTS = { graduate: '#E66239', government: '#00C951', banking: '#E66239', general: '#E66239', clinical: '#244655', exact: '#244655' };
+const TPL_DEFAULTS = { graduate: '#008000', government: '#00C951', banking: '#008000', general: '#008000', clinical: '#244655', exact: '#244655' };
 const FONTS = { poppins: "'Poppins',sans-serif", georgia: "Georgia,Gelasio,'Times New Roman',serif", arial: "Arial,'Liberation Sans',Helvetica,sans-serif" };
 const SIZES = { s: '12px', m: '13px', l: '14.5px' };
 const TZ_CITIES = ['Dar es Salaam', 'Arusha', 'Mwanza', 'Dodoma', 'Mbeya', 'Morogoro', 'Tanga', 'Moshi', 'Iringa', 'Tabora', 'Kigoma', 'Shinyanga', 'Mtwara', 'Lindi', 'Singida', 'Bukoba', 'Musoma', 'Zanzibar', 'Kariakoo', 'Ubungo', 'Kinondoni', 'Temeke'];
@@ -92,7 +92,7 @@ export default function Builder({ initialMode }) {
   const cvIdRef = React.useRef(params.get('id') || null);
   const [, forceTick] = React.useState(0);
   const [template, setTemplate] = React.useState('graduate');
-  const [theme, setTheme] = React.useState({ color: '#E66239', font: 'poppins', size: 'm' });
+  const [theme, setTheme] = React.useState({ color: '#008000', font: 'poppins', size: 'm' });
   const [data, setData] = React.useState(blankData);
   const [entryMode, setEntryModeState] = React.useState(null);
   const [aiReveal, setAiReveal] = React.useState(null);
@@ -134,7 +134,7 @@ export default function Builder({ initialMode }) {
       } else { cvIdRef.current = null; }
     } else {
       setTemplate(tpl);
-      setTheme((th) => ({ ...th, color: TPL_DEFAULTS[tpl] || '#E66239' }));
+      setTheme((th) => ({ ...th, color: TPL_DEFAULTS[tpl] || '#008000' }));
     }
     let m = initialMode || params.get('mode') || null;
     try { m = m || localStorage.getItem('mrcv.cvMode') || null; } catch (e) { /* ignore */ }
@@ -625,7 +625,7 @@ export default function Builder({ initialMode }) {
                 <div className="d-flex align-items-center gap-2">
                   <small className="text-secondary">{t('bld.color')}</small>
                   <div className="d-flex gap-1">
-                    {['#E66239', '#15803D', '#1D4ED8', '#0F766E', '#9A3412', '#262626'].map((c) => (
+                    {['#008000', '#7C3AED', '#1D4ED8', '#0F766E', '#9A3412', '#262626'].map((c) => (
                       <button key={c} className={`btn rounded-circle p-0 theme-swatch${theme.color.toLowerCase() === c.toLowerCase() ? ' active' : ''}`} data-color={c} style={{ width: '24px', height: '24px', background: c }} title={c} onClick={() => { dirtyRef.current = true; setTheme((th) => ({ ...th, color: c })); }}></button>
                     ))}
                   </div>
@@ -869,7 +869,7 @@ function plainText(d) {
 }
 
 function exportCSS(theme, template) {
-  const accent = theme.color || '#E66239';
+  const accent = theme.color || '#008000';
   const font = FONTS[theme.font] || FONTS.poppins;
   const size = SIZES[theme.size] || SIZES.m;
   let extra = '';

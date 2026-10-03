@@ -197,7 +197,7 @@ export function collectSheetCSS(theme) {
   const font = String((theme && theme.fontStack) || "'Poppins',sans-serif")
     .replace(/'Poppins',sans-serif/, 'Calibri,Arial,sans-serif');
   return out.join('\n')
-    .replace(/var\(--cv-accent\)/g, (theme && theme.color) || '#E66239')
+    .replace(/var\(--cv-accent\)/g, (theme && theme.color) || '#008000')
     .replace(/var\(--cv-font\)/g, font)
     .replace(/var\(--cv-size\)/g, (theme && theme.size) || '13px');
 }
@@ -515,7 +515,7 @@ export function cvToHTML(data, only = null) {
 // opts.singleFont: request only the first family (Word/LibreOffice take the
 // whole stack as one broken name otherwise); browsers keep the full stack.
 export function cvThemedHTML(data, theme, template, opts = {}) {
-  const accent = (theme && theme.color) || '#E66239';
+  const accent = (theme && theme.color) || '#008000';
   const fullStack = (theme && theme.fontStack) || "'Poppins',sans-serif";
   const font = opts.singleFont ? fullStack.split(',')[0].replace(/['"]/g, '') : fullStack;
   const size = (theme && theme.size) || '13px';
@@ -592,7 +592,7 @@ export function cvExactExport(data, t) {
   const skills = String(data.skills || '').split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
   const photo = p.photo
     ? `<p align="center"><img src="${p.photo}" width="110"></p>`
-    : `<p align="center"><font color="#244655" size="6"><b>${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</b></font></p>`;
+      : `<p align="center"><font color="${t.accent}" size="6"><b>${esc(((first.charAt(0) || '') + (last.charAt(0) || '') || 'CV').toUpperCase())}</b></font></p>`;
   const secH = (txt) => `<p><font color="${t.accent}" size="3"><b>${txt}</b></font></p>`;
   const para = (txt) => `<p>${esc(txt)}</p>`;
   const rail = `${photo}`

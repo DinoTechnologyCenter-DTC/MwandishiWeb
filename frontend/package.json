@@ -1,8 +1,20 @@
 {
-  "name": "mrcv-web-frontend",
+  "name": "mwandishi-ai-frontend",
   "version": "1.0.0",
-  "description": "Mwandishi frontend — CV builder web app",
-  "main": "index.js",
+  "private": true,
+  "description": "Mwandishi AI — ATS-friendly CV and cover letter builder for Tanzanian employers, in English and Kiswahili.",
+  "homepage": "https://mwandishi.dtcwonders.online/",
+  "keywords": [
+    "cv-builder",
+    "cover-letter",
+    "ats",
+    "ats-friendly",
+    "kiswahili",
+    "tanzania",
+    "mwandishi-ai"
+  ],
+  "author": "DTC Wonders",
+  "license": "ISC",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,9 +22,6 @@
     "deploy": "bash deploy.sh",
     "test": "node tests/smoke.mjs"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@popperjs/core": "^2.11.8",

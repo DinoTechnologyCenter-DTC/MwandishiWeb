@@ -12,14 +12,31 @@ $gray-800: #262626 !default;
 $gray-900: #171717 !default;
 $gray-950: #0a0a0a !default;
 
-$orange:       #E66239 !default;
+// ── Brand ────────────────────────────────────────────────────────────
+// Single source of truth for the Mwandishi green. The lighter steps are
+// for tints/fills, the darker ones for hover states and gradient stops.
+// Don't hardcode brand hexes anywhere else -- use these.
+$brand:        #008000 !default;   // base: buttons, links, active states
+$brand-050:    #F4FBF4 !default;   // faint fills
+$brand-100:    #E8F8E8 !default;
+$brand-200:    #CEF3CE !default;
+$brand-300:    #AAEEAA !default;
+$brand-400:    #53EA53 !default;
+$brand-500:    #0BCB0B !default;
+$brand-600:    #006600 !default;   // hover / pressed
+$brand-700:    #004C00 !default;   // gradient end
+$brand-800:    #003800 !default;
+$brand-900:    #002900 !default;   // deepest gradient stop
+
+// Status colours. Deliberately NOT derived from $brand -- note that
+// $green (success) is a brighter green and must stay distinct from it.
 $red:          #FB2C36 !default;
 $green:        #00C951 !default;
 $cyan:         #00B8DB !default;
 $yellow:       #F0B100 !default;
 
 
-$primary:       $orange !default;
+$primary:       $brand !default;
 $secondary:     $gray-600 !default;
 $success:       $green !default;
 $info:          $cyan !default;
