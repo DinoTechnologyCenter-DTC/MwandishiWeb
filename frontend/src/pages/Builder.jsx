@@ -6,7 +6,7 @@ import {
   downloadStyledDoc, downloadFromBackend, draftViaBackend,
   chatViaBackend, collectSheetCSS, cvThemedHTML, cvExactHTML, cvToHTML,
   normalizeTZPhone, parseLevel, withExportPatch,
-  FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp,
+  FONTS, SIZES, TPL_DEFAULTS, exportCSS, shareCVWhatsApp, SAMPLE_CV, SAMPLE_EXACT, cvDataFor,
 } from '../lib/store.js';
 import Modal from '../components/Modal.jsx';
 import AITextLoading from '../components/AITextLoading.jsx';
@@ -133,6 +133,12 @@ export default function Builder({ initialMode }) {
     } else {
       setTemplate(tpl);
       setTheme((th) => ({ ...th, color: TPL_DEFAULTS[tpl] || '#008000' }));
+      // A fresh template opens with its worked example (Amina Juma everywhere,
+      // Kai Carter for Exact Replica — exactly what the /templates cards show),
+      // not an empty form. Merged over blankData so the shape stays complete
+      // (photo, arrays) even where a sample is sparse — edits never mutate the
+      // module constants.
+      setData(cvDataFor({ data: tpl === 'exact' ? SAMPLE_EXACT : SAMPLE_CV }));
     }
     let m = initialMode || params.get('mode') || null;
     try { m = m || localStorage.getItem('mrcv.cvMode') || null; } catch (e) { /* ignore */ }
