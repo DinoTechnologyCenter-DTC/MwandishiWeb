@@ -128,6 +128,15 @@ export function fmtDate(d) {
   return `${p(dt.getDate())}/${p(dt.getMonth() + 1)}/${dt.getFullYear()}`;
 }
 
+export function fmtDateTime(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  const p = (n) => String(n).padStart(2, '0');
+  const h24 = dt.getHours();
+  const ap = h24 >= 12 ? 'PM' : 'AM';
+  const h12 = h24 % 12 || 12;
+  return `${fmtDate(dt)} ${p(h12)}:${p(dt.getMinutes())} ${ap}`;
+}
+
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -215,12 +224,105 @@ export function backendBase() {
   }
 }
 
+// ---- user feedback ----
+// Goes to the admin inbox (POST /api/feedback) when the backend is reachable;
+// otherwise queued on-device (offline-first) so nothing is ever lost. The
+// queue is retried on every later submit.
+const FB_KEY = 'mrcv.feedback';
+// Tab-scoped admin passcode: closing the tab locks the inbox again.
+export const ADMIN_KEY_KEY = 'mrcv.adminKey';
+export function getFeedbackQueue() {
+  try {
+    const q = JSON.parse(localStorage.getItem(FB_KEY) || '[]');
+    return Array.isArray(q) ? q : [];
+  } catch (e) { return []; }
+}
+function saveFeedbackQueue(q) {
+  try { localStorage.setItem(FB_KEY, JSON.stringify(q)); } catch (e) { /* ignore */ }
+}
+export async function flushFeedbackQueue() {  const base = backendBase();
+  const q = getFeedbackQueue();
+  if (!base || !q.length) return q.length;
+  const left = [];
+  for (const entry of q) {
+    try {
+      const r = await fetch(`${base}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (!r.ok) left.push(entry);
+    } catch (e) { left.push(entry); }
+  }
+  saveFeedbackQueue(left);
+  return left.length;
+}
+export async function submitFeedback({ rating, improvement, problem, page }) {
+  const entry = {
+    rating: Math.max(0, Math.min(5, Math.round(rating || 0))),
+    improvement: String(improvement || '').trim().slice(0, 2000),
+    problem: String(problem || '').trim().slice(0, 2000),
+    page: String(page || '').slice(0, 120),
+    at: nowISO(),
+    v: 1,
+  };
+  const base = backendBase();
+  if (base) {
+    try {
+      const r = await fetch(`${base}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry),
+      });
+      if (r.ok) {
+        // Piggyback: drain anything queued while offline.
+        flushFeedbackQueue().catch(() => {});
+        return { sent: true };
+      }
+    } catch (e) { /* fall through to the local queue */ }
+  }
+  const q = getFeedbackQueue();
+  q.push(entry);
+  saveFeedbackQueue(q);
+  return { sent: false, queued: true };
+}
+
+// Public backend health for the admin System Status tab. No key needed;
+// returns { ok:false } when unreachable so the page can say so honestly.
+export async function getBackendHealth() {
+  const base = backendBase();
+  if (!base) return { ok: false };
+  try {
+    const r = await fetch(`${base}/health`);
+    if (!r.ok) return { ok: false, status: r.status };
+    return { ok: true, ...(await r.json()) };
+  } catch (e) {
+    return { ok: false, status: 0 };
+  }
+}
+
+// Admin inbox reader. The passcode travels as X-Admin-Key and is never stored
+// anywhere except the tab's sessionStorage (see pages/Admin.jsx).
+export async function getFeedbackAdmin(key, { minRating = 0, limit = 200 } = {}) {  const base = backendBase();
+  if (!base) return { ok: false, status: 0 };
+  try {
+    const r = await fetch(
+      `${base}/feedback?min_rating=${Math.max(0, Math.min(5, minRating | 0))}&limit=${Math.max(1, Math.min(1000, limit | 0))}`,
+      { headers: { 'X-Admin-Key': key || '' } },
+    );
+    if (!r.ok) return { ok: false, status: r.status };
+    const body = await r.json();
+    return { ok: true, count: body.count || 0, items: Array.isArray(body.items) ? body.items : [] };
+  } catch (e) {
+    return { ok: false, status: 0 };
+  }
+}
+
 // Render an export and hand back the bytes. Split out from downloadFromBackend
 // so the share flow can reuse the very same file instead of paying for a second
 // headless-Chrome render. Returns null when the backend is unreachable so
 // callers keep the local-first fallback.
-export async function fetchExportBlob(kind, payload) {
-  const base = backendBase();
+export async function fetchExportBlob(kind, payload) {  const base = backendBase();
   if (!base) return null;
   const ctl = new AbortController();
   const to = setTimeout(() => ctl.abort(), 25000);

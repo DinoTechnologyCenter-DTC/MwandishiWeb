@@ -1,0 +1,86 @@
+﻿<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>CV</title><style>.cv-sheet{--cv-accent: #008000; --cv-font: "Poppins", sans-serif; --cv-size: 13px; background: rgb(255, 255, 255); border: 1px solid rgb(229, 229, 229); border-radius: 8px; box-shadow: rgba(0, 0, 0, 0.08) 0px 1px 3px; padding: 32px 30px; font-family: Calibri,Arial,sans-serif; font-size: 13px; line-height: 1.55; color: rgb(38, 38, 38);}
+.cv-sheet .cv-name{font-size: 1.7em; font-weight: 700; margin-bottom: 0px; color: rgb(23, 23, 23);}
+.cv-sheet .cv-title{font-size: 1em; font-weight: 600; color: #244655; margin-bottom: 4px;}
+.cv-sheet .cv-contact{font-size: 0.9em; color: rgb(115, 115, 115); margin-bottom: 12px;}
+.cv-sheet .cv-sec{font-size: 0.95em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(23, 23, 23); border-bottom: 2px solid #244655; padding-bottom: 2px; margin: 14px 0px 6px;}
+.cv-sheet .cv-item{margin-bottom: 8px;}
+.cv-sheet .cv-item-head{width: 100%; border-collapse: collapse; border: 0px; font-weight: 600;}
+.cv-sheet .cv-item-head td{border: 0px; padding: 0px; vertical-align: bottom;}
+.cv-sheet .cv-item-head .cv-h-left{text-align: left; padding-right: 12px;}
+.cv-sheet .cv-dates{font-weight: 400; color: rgb(115, 115, 115); font-size: 0.9em; white-space: nowrap; text-align: right;}
+.cv-sheet ul.cv-bullets{margin: 2px 0px 0px; padding-left: 18px;}
+.cv-sheet .skill-chip{display: inline-block; background: rgb(245, 245, 245); border: 1px solid rgb(229, 229, 229); border-radius: 20px; padding: 1px 10px; margin: 0px 4px 4px 0px; font-size: 0.9em;}
+.tpl-government{--cv-accent: #00C951;}
+.tpl-government .cv-head{text-align: center;}
+.tpl-government .cv-sec{border-bottom: 3px double #244655;}
+.tpl-banking{--cv-accent: #008000;}
+.tpl-graduate .cv-name{color: #244655;}
+.tpl-general .cv-sec{border-bottom-width: medium; border-bottom-style: none; border-bottom-color: currentcolor; border-left: 4px solid #244655; padding-left: 8px;}
+.tpl-clinical{--cv-accent: #244655;}
+.tpl-clinical.cv-sheet{columns: 2; column-gap: 28px;}
+.tpl-clinical .cv-head{column-span: all; border-bottom: 3px solid #244655; padding-bottom: 8px; margin-bottom: 4px;}
+.tpl-clinical .cv-name{color: #244655;}
+.tpl-clinical .cv-sec{break-inside: avoid;}
+.tpl-clinical .cv-item{break-inside: avoid;}
+.tpl-exact{--cv-accent: #244655;}
+.tpl-exact .cv-exact-cols{display: grid; grid-template-columns: 1fr 2fr; gap: 20px;}
+.tpl-exact .cv-exact-rail{background: rgb(239, 237, 234); border-radius: 6px; padding: 14px 12px;}
+.tpl-exact .cv-exact-photoWrap{text-align: center; margin-bottom: 10px;}
+.tpl-exact .cv-exact-photo{width: 110px; height: 110px; border-radius: 50%; object-fit: cover;}
+.tpl-exact .cv-exact-initials{display: inline-flex; align-items: center; justify-content: center; width: 110px; height: 110px; border-radius: 50%; background: #244655; color: rgb(255, 255, 255); font-size: 34px; font-weight: 700;}
+.tpl-exact .cv-exact-sec{font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #244655; margin: 12px 0px 6px;}
+.tpl-exact .cv-exact-line{font-size: 12px; margin-bottom: 3px; word-break: break-word;}
+.tpl-exact .cv-exact-name{font-size: 30px; line-height: 1.1; margin-bottom: 2px;}
+.tpl-exact .cv-exact-name .first{color: rgb(23, 23, 23); font-weight: 400;}
+.tpl-exact .cv-exact-name .last{color: #244655; font-weight: 700;}
+.tpl-exact .cv-exact-role{font-size: 13px; font-weight: 600; margin-bottom: 6px;}
+.tpl-exact .cv-item{break-inside: avoid;}
+.tpl-letter{font-family: "Times New Roman", Times, serif; font-size: 12pt; line-height: 16pt; color: rgb(0, 0, 0); padding: 1in;}
+.tpl-letter .lt-block{margin: 0px 0px 10pt;}
+.tpl-letter .lt-right{text-align: right;}
+.tpl-letter .lt-left{text-align: left;}
+.tpl-letter .lt-center{text-align: center;}
+.tpl-letter .lt-sender{line-height: 30.7pt; margin-bottom: 15pt;}
+.tpl-letter .lt-salute{text-indent: 24pt;}
+.tpl-letter .lt-subject{text-align: center; margin-bottom: 12pt;}
+.tpl-letter .lt-para{margin: 0px 0px 10pt; text-align: justify; text-indent: 66pt;}
+.tpl-letter .lt-to > div, .tpl-letter .lt-close > div{line-height: 16pt;}
+.tpl-letter .lt-to > div:not(:last-child), .tpl-letter .lt-close > div:not(:last-child){margin-bottom: 10pt;}
+.tpl-letter .lt-close{margin-top: 12pt;}
+.tpl-letter .lt-contact{margin-top: 6pt;}
+.tpl-soon{opacity: 0.8;}
+.tpl-banking .cv-head{background: rgb(23, 23, 23); color: rgb(255, 255, 255); border-radius: 6px; padding: 12px 14px; margin: -8px -6px 10px;}
+.tpl-banking .cv-head .cv-name{color: rgb(255, 255, 255);}
+.tpl-banking .cv-head .cv-contact{color: rgb(212, 212, 212);}
+.tpl-banking .cv-title{color: rgb(240, 177, 0);}
+.tpl-graduate .cv-name{color: rgb(0, 128, 0);}
+#cvCol .cv-sheet{margin-left: auto; margin-right: auto;}
+.cv-sheet{border:0!important;border-radius:0!important;box-shadow:none!important;background:#fff!important;padding:0!important;width:auto!important;max-width:none!important;min-height:0!important;overflow:visible!important}
+.tpl-banking .cv-head{margin:0!important;border-radius:0!important}
+.tpl-clinical.cv-sheet{column-gap:24px!important}
+.cv-head,.cv-sec,.cv-item,.cv-item-head,.cv-bullets li,.skill-chip{break-inside:avoid;page-break-inside:avoid}
+.cv-sec{break-after:avoid;page-break-after:avoid}
+.cv-item-head{display:table!important;width:100%!important;border-collapse:collapse!important}
+.cv-item-head td{border:0!important;padding:0!important;vertical-align:bottom!important}
+.cv-item-head .cv-h-left{text-align:left!important;padding-right:12px!important}
+.cv-item-head .cv-dates{text-align:right!important;white-space:nowrap!important}
+.skill-chip{margin:0 0 4px 0!important}
+.cv-sheet p,.cv-sheet li,.cv-sheet div{orphans:2;widows:2}
+</style></head><body><div style="font-family:Poppins;font-size:13px;color:#262626;line-height:1.55;">
+    <div style="margin-bottom:12px;">
+      <div style="font-size:22px;font-weight:700;color:#244655;margin:0;">Amina Juma</div>
+      <div style="font-size:13px;font-weight:700;color:#244655;margin-bottom:4px;">BSc Computer Science Graduate</div>
+      <div style="font-size:12px;color:#737373;margin-bottom:12px;">+255765123456 · amina.juma@example.com · Ubungo, Dar es Salaam</div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Summary</div><div>Motivated Computer Science graduate from the University of Dar es Salaam with hands-on IT support experience and a final-year project in mobile payments. Quick to learn, hardworking and ready to contribute from day one.</div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Experience</div>
+      <div class="cv-item"><table style="width:100%;border-collapse:collapse;border:0;font-weight:700;"><tbody><tr><td style="border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;">IT Support Intern (Field Attachment) — Vodacom Tanzania — IT Department</td><td style="border:0;padding:0;vertical-align:bottom;text-align:right;white-space:nowrap;font-weight:400;color:#737373;font-size:12px;">Jun 2022 – Aug 2022</td></tr></tbody></table><ul class="cv-bullets"><li>Resolved 30+ staff support tickets on hardware, email and network issues</li><li>Documented common fixes, cutting repeat tickets by 20%</li><li>Assisted rollout of 50 new workstations across two floors</li></ul></div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Education</div>
+      <div class="cv-item"><table style="width:100%;border-collapse:collapse;border:0;font-weight:700;"><tbody><tr><td style="border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;">BSc in Computer Science — University of Dar es Salaam</td><td style="border:0;padding:0;vertical-align:bottom;text-align:right;white-space:nowrap;font-weight:400;color:#737373;font-size:12px;">2020 – 2023</td></tr></tbody></table></div>
+      <div class="cv-item"><table style="width:100%;border-collapse:collapse;border:0;font-weight:700;"><tbody><tr><td style="border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;">ACSEE — Division I — Kilakala Secondary School</td><td style="border:0;padding:0;vertical-align:bottom;text-align:right;white-space:nowrap;font-weight:400;color:#737373;font-size:12px;">2018 – 2020</td></tr></tbody></table></div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Skills</div><div><span class="skill-chip">Computer troubleshooting</span> <span class="skill-chip">MS Office &amp; Google Workspace</span> <span class="skill-chip">Basic networking</span> <span class="skill-chip">Kiswahili &amp; English</span> <span class="skill-chip">Teamwork</span></div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Projects</div>
+      <div class="cv-item"><table style="width:100%;border-collapse:collapse;border:0;font-weight:700;"><tbody><tr><td style="border:0;padding:0 12px 0 0;vertical-align:bottom;text-align:left;">M-Pesa Fee Calculator App</td></tr></tbody></table><div>Android class project that computes mobile-money charges offline. Presented to 60 students and lecturers.</div></div>
+    <div style="font-size:12px;font-weight:700;color:#171717;border-bottom:2px solid #244655;padding-bottom:2px;margin:14px 0 6px;">Referees</div>
+      <div class="cv-item"><strong>Dr. Neema Shirima</strong> — Lecturer, UDSM<br><span style="color:#737373;font-size:12px;"+255754987654</span></div>
+      <div class="cv-item"><strong>Mr. Baraka Mziray</strong> — Supervisor, Vodacom Tanzania<br><span style="color:#737373;font-size:12px;"+255713456789</span></div></div></body></html>

@@ -833,7 +833,7 @@ export default function Builder({ initialMode }) {
           </div>
         </div>
       </div>
-      <Modal open={thanksOpen} onClose={() => setThanksOpen(false)}>
+      <Modal open={thanksOpen} onClose={() => setThanksOpen(false)} size="modal-sm">
         <div id="thanksAnim" className="mx-auto" style={{ width: '150px', height: '150px' }}></div>
         <h4 className="mb-2">{t('thanks.title')}</h4>
         <p className="text-secondary mb-4">{t('thanks.body')}</p>

@@ -8,6 +8,7 @@ const SECTIONS = [
   ['tm.s4h', 'tm.s4p', null],
   ['tm.s5h', 'tm.s5p', null],
   ['tm.s6h', 'tm.s6p', null],
+  ['tm.s11h', 'tm.s11p', null],
   ['tm.s7h', 'tm.s7p', null],
   ['tm.s8h', 'tm.s8p', null],
   ['tm.s9h', 'tm.s9p', null],

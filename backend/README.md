@@ -28,6 +28,10 @@ Needs system Chrome (PDF, via Playwright + `CHROME_PATH`, default
 - `POST /api/ai/chat` `{ messages:[{role, content}], lang }` →
   `{ reply, done, name, job, level, about }` — the CV interviewer; ask one
   short question at a time until all four slots are known
+- `POST /api/feedback` `{ rating, improvement, problem, page }` → `{ ok, id }`
+  — public inbox, one JSON object per line in `backend/data/feedback.jsonl`
+- `GET /api/feedback?min_rating=&limit=` → `{ ok, count, items }` — needs the
+  `ADMIN_KEY` env passcode as `X-Admin-Key` header; fails closed without it
 
 `html` = CV sheet inner HTML, `css` = export stylesheet. The frontend sends
 exactly what it renders, so files match the website by construction.

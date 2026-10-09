@@ -1,38 +1,28 @@
 import React from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar.jsx';
 import Topbar from './Topbar.jsx';
-import { SoonModal, FeedbackModal } from './Modal.jsx';
 import { useLang } from '../context.jsx';
-import { clearUser } from '../lib/store.js';
 
-export default function Layout() {
+// Admin chrome: its own sidebar (Feedback Inbox, System Status), deliberately
+// no link to it from the user sidebar and no user modals here.
+export default function AdminLayout() {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileShow, setMobileShow] = React.useState(false);
-  const [soonOpen, setSoonOpen] = React.useState(false);
-  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
   const { t } = useLang();
   const location = useLocation();
-  const navigate = useNavigate();
 
   const closeMobile = React.useCallback(() => setMobileShow(false), []);
-  const logout = React.useCallback(() => {
-    try { clearUser(); } catch (e) { /* ignore */ }
-    closeMobile();
-    navigate('/signin');
-  }, [closeMobile, navigate]);
 
   return (
     <React.Fragment>
       <div id="overlay" className={`overlay${mobileShow ? ' show' : ''}`} onClick={closeMobile}></div>
       <Topbar collapsed={collapsed} onToggleSidebar={() => setCollapsed((c) => !c)} onOpenMobile={() => setMobileShow(true)} />
       <Sidebar
+        variant="admin"
         collapsed={collapsed}
         mobileShow={mobileShow}
         onNavigate={closeMobile}
-        onOpenSoon={() => { closeMobile(); setSoonOpen(true); }}
-        onFeedback={() => { closeMobile(); setFeedbackOpen(true); }}
-        onLogout={logout}
       />
       <main id="content" className={`content pt-10 pb-2${collapsed ? ' full' : ''}`} key={location.pathname}>
         <div className="container-fluid">
@@ -46,8 +36,6 @@ export default function Layout() {
           </div>
         </div>
       </main>
-      <SoonModal open={soonOpen} onClose={() => setSoonOpen(false)} t={t} />
-      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
     </React.Fragment>
   );
 }

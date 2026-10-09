@@ -2,7 +2,9 @@
 
 POST /api/export/pdf  { html, css, filename }            -> A4 PDF
 POST /api/export/docx { data, theme, template, filename } -> .docx
-                       { html, css, filename }            -> .docx (legacy fallback)
+                        { html, css, filename }            -> .docx (legacy fallback)
+POST /api/feedback { rating, improvement, problem, page } -> { ok, id }
+GET  /api/feedback (X-Admin-Key) ?min_rating=&limit=      -> { ok, count, items }
 GET  /api/health -> { ok, pdf, docx, ai }
 
 PDF renders the exact HTML/CSS the site shows via headless Chrome, because CSS
@@ -30,15 +32,22 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)  # backend/.env wins; commented lines are ignored
 
+import datetime
+import hmac
+import json
+import logging
 import re
 import shutil
 import subprocess
 import tempfile
+import threading
+import uuid
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from playwright.async_api import async_playwright
 
 PORT = int(os.environ.get("PORT", "8000"))
@@ -49,6 +58,17 @@ GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-20b")
 CF_API_TOKEN = os.environ.get("CF_API_TOKEN", "")
 CF_ACCOUNT_ID = os.environ.get("CF_ACCOUNT_ID", "")
 CF_MODEL = os.environ.get("CF_MODEL", "@cf/openai/gpt-oss-20b")
+ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
+DATA_DIR = Path(__file__).resolve().parent / "data"
+FB_FILE = DATA_DIR / "feedback.jsonl"
+_fb_lock = threading.Lock()
+
+log = logging.getLogger("mwandishi")
+if not log.handlers:
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+    log.addHandler(_h)
+log.setLevel(logging.INFO)
 
 app = FastAPI(title="MwandishiAI", description="MwandishiAI CV builder backend — AI chat, CV drafts, PDF/DOCX export.")
 app.add_middleware(
@@ -95,6 +115,86 @@ def safe_name(name: str, ext: str) -> str:
     base = re.sub(r'[\\/:*?"<>|]', "-", name or "document")
     base = re.sub(r"(\.[a-z0-9]+)?$", ext, base, flags=re.IGNORECASE)
     return base or f"document{ext}"
+
+
+# The exact template's rail initials, exactly as the frontend export twin emits
+# them: <p align="center"><font color="#244655" size="6"><b>KC</b></font></p>
+EXACT_INITIALS_RE = re.compile(
+    r'<p align="center"><font color="(#[0-9A-Fa-f]{6})" size="6"><b>([^<]{1,4})</b></font></p>'
+)
+
+
+# The exact export twin's outer table and rail cell, literally as emitted
+# (attribute order tolerated; nothing else in any template looks like this).
+EXACT_TABLE_RE = re.compile(
+    r'<table\s+width="100%"\s+border="0"\s+cellpadding="10"\s+cellspacing="0"\s*>')
+EXACT_RAIL_TD_RE = re.compile(
+    r'<td\s+width="32%"\s+valign="top"\s+bgcolor="#EFEDEA"\s*>')
+
+
+def exact_badge_html(html: str) -> str:
+    """Give the exact rail initials the round web badge in the PDF.
+
+    The web preview draws a 110px accent disc; the export HTML carries plain
+    text, and Chrome (unlike Word-bound HTML) prints border-radius faithfully.
+    So the backend circles it here at PDF render time instead of requiring a
+    frontend change. No match (other templates, photo variant) -> untouched.
+    """
+    def _circle(m: "re.Match") -> str:
+        color, initials = m.group(1), m.group(2)
+        return (
+            '<p align="center">'
+            '<span style="display:inline-block;width:110px;height:110px;'
+            'line-height:110px;border-radius:50%;'
+            f'background:{color};color:#ffffff;font-size:34px;font-weight:700;">'
+            f'{initials}</span></p>'
+        )
+    return EXACT_INITIALS_RE.sub(_circle, html)
+
+
+def exact_badge_img(html: str) -> str:
+    """Embed the round web badge as an image for the LibreOffice DOCX path.
+
+    That path only receives HTML (no structured data), so the native badge
+    renderer cannot run. But LibreOffice DOES embed data-URL images faithfully,
+    so swap the initials line for the same badge PNG the native path uses.
+    Non-exact HTML has no EFEDEA rail marker and passes through untouched.
+    """
+    if "#EFEDEA" not in html.upper():
+        return html
+
+    def _img(m: "re.Match") -> str:
+        try:
+            import base64
+            from docx_render import badge_png
+            raw = badge_png(m.group(2), m.group(1).lstrip("#"))
+            b64 = base64.b64encode(raw).decode("ascii")
+            return (f'<p align="center"><img src="data:image/png;base64,{b64}" '
+                    f'width="110" height="110"></p>')
+        except Exception:
+            return m.group(0)
+    return EXACT_INITIALS_RE.sub(_img, html)
+
+
+def exact_rail_radius(html: str) -> str:
+    """Round the exact rail's corners in the PDF like the web preview (6px).
+
+    Chrome only honours cell radius under border-collapse:separate, while the
+    print stylesheet collapses — so both the rail cell and its table are
+    touched, inline (inline beats the stylesheet, and only this table matches).
+    Anything without the EFEDEA rail marker passes through untouched.
+    """
+    if "#EFEDEA" not in html.upper():
+        return html
+    html = EXACT_TABLE_RE.sub(
+        '<table width="100%" border="0" cellpadding="10" cellspacing="0" '
+        'style="border-collapse:separate;border-spacing:0;">', html, count=1)
+    # NOTE: the background rides in CSS as well as bgcolor — Chrome clips the
+    # CSS-painted layer with border-radius but not the legacy attribute paint.
+    return EXACT_RAIL_TD_RE.sub(
+        '<td width="32%" valign="top" bgcolor="#EFEDEA" '
+        'style="border-radius:6px;background:#EFEDEA;">',
+        html, count=1)
 
 
 def page_doc(html: str, css: str) -> str:
@@ -158,7 +258,10 @@ async def export_pdf(req: ExportReq):
         browser = await get_browser()
         page = await browser.new_page()
         try:
-            await page.set_content(page_doc(req.html, req.css), wait_until="networkidle", timeout=15000)
+            # Circle-ify exact rail initials + round the rail (no-ops for
+            # every other template).
+            html = exact_rail_radius(exact_badge_html(req.html))
+            await page.set_content(page_doc(html, req.css), wait_until="networkidle", timeout=15000)
             pdf = await page.pdf(
                 format="A4",
                 print_background=True,
@@ -186,6 +289,7 @@ async def export_docx(req: ExportReq):
             blob = render_docx(req.data, req.theme or {}, req.template or "graduate")
         except Exception as e:  # noqa: BLE001
             raise HTTPException(500, f"docx render failed: {str(e)[:300]}")
+        log.info("docx native template=%s bytes=%d", req.template or "graduate", len(blob))
         return Response(
             content=blob,
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -203,6 +307,7 @@ async def export_docx(req: ExportReq):
         if letter_docx.looks_like_letter(req.html):
             spec = letter_docx.parse(req.html)
             blob = letter_docx.render(spec)
+            log.info("docx letter-native bytes=%d", len(blob))
             return Response(
                 content=blob,
                 media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -219,7 +324,8 @@ async def export_docx(req: ExportReq):
     try:
         src = os.path.join(tmp, "cv.doc")
         with open(src, "w", encoding="utf-8") as f:
-            f.write(page_doc(req.html, req.css))
+            # Badge the exact rail for the LibreOffice path too (no-op else).
+            f.write(page_doc(exact_badge_img(req.html), req.css))
         proc = subprocess.run(
             [
                 SOFFICE_BIN, "--headless",
@@ -239,11 +345,70 @@ async def export_docx(req: ExportReq):
             data = f.read()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    log.info("docx libreoffice-fallback template=%s bytes=%d", req.template or "?", len(data))
     return Response(
         content=data,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{safe_name(req.filename, ".docx")}"'},
     )
+
+
+class FeedbackIn(BaseModel):
+    rating: int = Field(0, ge=0, le=5)
+    improvement: str = Field("", max_length=2000)
+    problem: str = Field("", max_length=2000)
+    page: str = Field("", max_length=120)
+
+
+@app.post("/api/feedback")
+async def feedback_post(fb: FeedbackIn):
+    # Public inbox: anyone may write, only the admin key may read (see below).
+    # One JSON object per line, so a crash can never corrupt earlier entries.
+    entry = {
+        "id": uuid.uuid4().hex[:12],
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "rating": fb.rating,
+        "improvement": fb.improvement.strip(),
+        "problem": fb.problem.strip(),
+        "page": fb.page.strip(),
+    }
+    if not entry["improvement"] and not entry["problem"] and not entry["rating"]:
+        raise HTTPException(400, "rating or text required")
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        with _fb_lock:
+            with open(FB_FILE, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except OSError as e:
+        raise HTTPException(500, f"feedback store failed: {str(e)[:200]}")
+    return {"ok": True, "id": entry["id"]}
+
+
+@app.get("/api/feedback")
+async def feedback_list(
+    x_admin_key: str = Header("", alias="X-Admin-Key"),
+    min_rating: int = Query(0, ge=0, le=5),
+    limit: int = Query(200, ge=1, le=1000),
+):
+    # Fail closed: with no ADMIN_KEY configured, nobody reads anything.
+    if not ADMIN_KEY or not hmac.compare_digest(x_admin_key, ADMIN_KEY):
+        raise HTTPException(403, "admin key required")
+    items = []
+    try:
+        with open(FB_FILE, encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    items.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except FileNotFoundError:
+        pass
+    items = [e for e in items if isinstance(e, dict) and int(e.get("rating", 0) or 0) >= min_rating]
+    items.sort(key=lambda e: e.get("at", ""), reverse=True)
+    return {"ok": True, "count": len(items), "items": items[:limit]}
 
 
 DRAFT_SYSTEM = (

@@ -32,7 +32,6 @@ from html import unescape
 from io import BytesIO
 
 from docx import Document
-from docx.enum.section import WD_SECTION
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
@@ -188,20 +187,6 @@ def fixed_layout(table, widths_mm: list[float] | None = None) -> None:
             col.set(qn("w:w"), str(int(mm * TWIP_PER_MM)))
 
 
-def columns_section(doc, count: int = 2, gap_mm: float = 7.4):
-    """A continuous section set to `count` columns — OOXML's real equivalent of
-    CSS `columns: 2`. Word balances the columns; LibreOffice and Google Docs do
-    not, so this is only used when the content is long enough to fill column
-    one on its own (see DocxRenderer._build_clinical)."""
-    sec = doc.add_section(WD_SECTION.CONTINUOUS)
-    sectPr = sec._sectPr
-    for old in sectPr.findall(qn("w:cols")):
-        sectPr.remove(old)
-    sectPr.append(_el("w:cols", w__num=str(count), w__space=str(int(gap_mm * TWIP_PER_MM)),
-                      w__equalWidth="1", w__sep="0"))
-    return sec
-
-
 def keep(paragraph, with_next: bool = False) -> None:
     """Stop Word splitting an entry across a page break."""
     ppr = paragraph._element.get_or_add_pPr()
@@ -228,6 +213,15 @@ def plain(value) -> str:
 
 
 def split_lines(value) -> list[str]:
+    # Newline-separated entries (bullets, paragraphs). Commas are content here:
+    # splitting on them turns one sentence ("hardware, email and network")
+    # into several bogus bullets.
+    return [x.strip() for x in str(value or "").split("\n") if x.strip()]
+
+
+def split_chips(value) -> list[str]:
+    # Skills chips: newline OR comma separated, matching the site, which splits
+    # the skills box on /[\n,]+/ before rendering chips.
     return [x.strip() for x in re.split(r"[\n,]+", str(value or "")) if x.strip()]
 
 
@@ -260,6 +254,33 @@ def image_bytes(value) -> bytes | None:
         return base64.b64decode(m.group(1))
     except (ValueError, TypeError):
         return None
+
+
+def badge_png(initials: str, accent_hex: str, px: int = 440) -> bytes:
+    """Round profile badge (accent disc, white initials), mirroring the web
+    `.cv-exact-initials` circle (110px disc, 34px type). Rendered at 4x so it
+    stays crisp in print. An image shows identically in Word, LibreOffice,
+    Google Docs and phones — unlike VML shapes or run shading, which either
+    vanish or come out rectangular outside Word.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+    initials = (initials or "CV").upper()[:2]
+    rgb = tuple(int(accent_hex[i:i + 2], 16) for i in (0, 2, 4))
+    img = Image.new("RGBA", (px, px), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.ellipse([0, 0, px - 1, px - 1], fill=rgb)
+    try:
+        font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", int(px * 0.32))
+    except OSError:
+        font = ImageFont.load_default()
+    bbox = d.textbbox((0, 0), initials, font=font)
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    d.text(((px - w) / 2 - bbox[0], (px - h) / 2 - bbox[1]),
+           initials, font=font, fill=(255, 255, 255, 255))
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 # --------------------------------------------------------------------------
@@ -361,7 +382,9 @@ class DocxRenderer:
     # -- section heading ----------------------------------------------------
     def heading(self, label: str) -> None:
         p = self.para(space_before=7, space_after=3)
-        style_run(p.add_run(label), BODY_FONT, 12, True, self.accent, caps=True, spacing_px=0.8)
+        # Export-twin section heads render at 16px for exact, 12px elsewhere.
+        style_run(p.add_run(label), BODY_FONT, 16 if self.tpl == "exact" else 12,
+                  True, self.accent, caps=True, spacing_px=0.8)
         if self.tpl == "exact":
             # exact uses accent labels with no rule (cvExactExport's secH)
             return
@@ -413,7 +436,7 @@ class DocxRenderer:
         p = self.para(space_before=3, space_after=0)
         style_run(p.add_run(left), BODY_FONT, self.size, True, GRAY_900)
         if dates:
-            style_run(p.add_run(f"  ({dates})"), BODY_FONT, self.size * 0.9, False, GRAY_500)
+            style_run(p.add_run(f"  ({dates})"), BODY_FONT, self.size, False, GRAY_500)
         keep(p, with_next=True)
 
     # -- bullets ------------------------------------------------------------
@@ -427,7 +450,7 @@ class DocxRenderer:
 
     # -- skill chips (flow templates) / plain lines (exact rail) -----------
     def skill_chips(self, value) -> None:
-        chips = split_lines(value)
+        chips = split_chips(value)
         if not chips:
             return
         p = self.para(space_before=1, space_after=2)
@@ -498,9 +521,10 @@ class DocxRenderer:
             body.append(OxmlElement("w:p"))
         return self.doc
 
-    # -- clinical: full-width header over two explicit columns --------------
+    # -- clinical: full-width header over balanced two-column body ------------
     COL_GAP_MM = 7.4
-    LONG_CV_MM = 150.0      # above this, real columns balance better than a split
+    PAGE_TEXT_MM = 297.0 - 2 * MARGIN_MM  # A4 text height per page
+    HEADER_MM = 30.0                       # reserve for header_plain() on page one
 
     def _line_mm(self) -> float:
         """Height of one wrapped line of body text, in millimetres."""
@@ -575,53 +599,58 @@ class DocxRenderer:
 
     def _build_clinical(self) -> None:
         # The stylesheet spans the header across both columns and flows the rest
-        # into two balanced ones.
-        #
-        # Two techniques, because no single one is right for both sizes:
-        #  - A two-cell row is the only layout that shows two columns in every
-        #    reader (LibreOffice and Google Docs ignore `columns: 2`), but a row
-        #    cannot rebalance, so a long CV leaves one column short.
-        #  - Real `w:cols` flows and rebalances, which is what a multi-page CV
-        #    needs, but a short CV never fills column one and so looks like a
-        #    single narrow column outside Word.
-        # Short CVs therefore get the explicit split and long ones real columns.
+        # into two balanced ones. The Word equivalent is explicit table splits:
+        # real `w:cols` snakes instead of balancing, and LibreOffice / Google
+        # Docs / WPS render only the first column, leaving the second empty —
+        # so every column here is a table, which shows two balanced columns in
+        # every reader. One table row cannot span pages, so long CVs are first
+        # cut into page-sized chunks; each chunk becomes its own balanced
+        # two-cell row and the chunks flow down the pages.
         self.header_plain()
         col_mm = (CONTENT_MM - self.COL_GAP_MM) / 2.0
         plan = self._plan_columns(col_mm - 6.0)
-        total = sum(h for _, h in plan)
-
-        if total > self.LONG_CV_MM:
-            columns_section(self.doc, 2, gap_mm=self.COL_GAP_MM)
-            # Content now flows in a column, so entries must be sized to it.
-            self.avail = col_mm
-            self._sections()
-            return
-
-        target = total / 2.0
-        left: list[str] = []
-        right: list[str] = []
-        running = 0.0
+        chunks: list[list[tuple[str, float]]] = []
+        cur: list[tuple[str, float]] = []
+        used = self.HEADER_MM
         for kind, height in plan:
-            # Fill the left column only while adding half of the next section
-            # still fits the target; everything after it flows to the right.
-            if not right and running + height / 2.0 <= target:
-                left.append(kind)
-                running += height
-            else:
-                right.append(kind)
-
-        t = self.table(1, 2, [col_mm, col_mm])
-        left_cell, right_cell = t.rows[0].cells
-        for cell in (left_cell, right_cell):
-            cell_width(cell, col_mm)
-            cell_borders(cell)
-        cell_margins(left_cell, 0, self.COL_GAP_MM / 2, 0, 0)
-        cell_margins(right_cell, 0, 0, 0, self.COL_GAP_MM / 2)
+            if cur and (used + height) / 2.0 > self.PAGE_TEXT_MM:
+                chunks.append(cur)
+                cur, used = [], 0.0
+            cur.append((kind, height))
+            used += height
+        if cur:
+            chunks.append(cur)
 
         prev, prev_avail = self._target, self.avail
-        for cell, kinds in ((left_cell, left), (right_cell, right)):
-            self._target, self.avail = cell, col_mm - 6.0
-            self._sections(only=set(kinds))
+        for kinds in chunks:
+            target = sum(h for _, h in kinds) / 2.0
+            left: list[str] = []
+            right: list[str] = []
+            running = 0.0
+            for kind, height in kinds:
+                # Fill the left column only while adding half of the next section
+                # still fits the target; everything after it flows to the right.
+                if not right and running + height / 2.0 <= target:
+                    left.append(kind)
+                    running += height
+                else:
+                    right.append(kind)
+            self._target, self.avail = prev, CONTENT_MM
+            if not left or not right:
+                # One section alone outweighs a page: it cannot be balanced, so
+                # it flows full width instead of leaving a column empty.
+                self._sections(only={k for k, _ in kinds})
+                continue
+            t = self.table(1, 2, [col_mm, col_mm])
+            left_cell, right_cell = t.rows[0].cells
+            for cell in (left_cell, right_cell):
+                cell_width(cell, col_mm)
+                cell_borders(cell)
+            cell_margins(left_cell, 0, self.COL_GAP_MM / 2, 0, 0)
+            cell_margins(right_cell, 0, 0, 0, self.COL_GAP_MM / 2)
+            for cell, cell_kinds in ((left_cell, left), (right_cell, right)):
+                self._target, self.avail = cell, col_mm - 6.0
+                self._sections(only=set(cell_kinds))
         self._target, self.avail = prev, prev_avail
 
     # -- exact: fixed rail (photo/contact/skills) + main column ------------
@@ -641,7 +670,7 @@ class DocxRenderer:
         # --- rail: photo or initials, contact, skills
         prev, prev_avail = self._target, self.avail
         self._target, self.avail = rail, rail_mm - 6.0
-        self._rail(contact_line(p), split_lines(self.d.get("skills")))
+        self._rail(contact_line(p), split_chips(self.d.get("skills")))
         self._target, self.avail = prev, prev_avail
 
         # --- main: two-tone name, role, then the body sections
@@ -651,10 +680,10 @@ class DocxRenderer:
         first = parts[0] if parts else "Your"
         last = " ".join(parts[1:]) if len(parts) > 1 else "Name"
         np = self.para(space_after=2)
-        style_run(np.add_run(first + " "), BODY_FONT, 30, False, GRAY_900)
-        style_run(np.add_run(last), BODY_FONT, 30, True, self.accent)
+        style_run(np.add_run(first + " "), BODY_FONT, 32, False, GRAY_900)
+        style_run(np.add_run(last), BODY_FONT, 32, True, self.accent)
         if plain(p.get("title")):
-            self.text(p.get("title"), size=13, bold=True, space_after=4)
+            self.text(p.get("title"), bold=True, space_after=4)
         self._sections(labels={"summary": "Profile", "experience": "Work Experience",
                                "education": "Education", "referees": "Referees"})
         self._target, self.avail = prev, prev_avail
@@ -675,18 +704,24 @@ class DocxRenderer:
             parts = plain(p.get("fullName")).split()
             initials = ("".join(x[0] for x in parts[:2]) or "CV").upper()
             ip = self.para(space_after=6, align=WD_ALIGN_PARAGRAPH.CENTER)
-            r = ip.add_run(f" {initials} ")
-            style_run(r, BODY_FONT, 34, True, "FFFFFF")
-            run_shading(r, self.accent)
+            try:
+                # Round accent badge like the web preview (110px disc ≈ 29mm).
+                ip.add_run().add_picture(
+                    BytesIO(badge_png(initials, self.accent)), width=Mm(29))
+            except Exception as e:  # noqa: BLE001 - badge must never fail the export
+                import logging
+                logging.getLogger("mwandishi").warning("exact badge skipped: %s", str(e)[:120])
+                r = ip.add_run(initials)
+                style_run(r, BODY_FONT, 32, True, self.accent)
 
         if contact:
             self.heading("Contact")
             for line in contact.split(" · "):
-                self.text(line, size=12, space_after=1)
+                self.text(line, space_after=1)
         if skills:
             self.heading("Skills")
             for s in skills:
-                self.text(s, size=12, space_after=1)
+                self.text(s, space_after=1)
 
     # -- sections (order mirrors cvToHTML / cvExactExport) -----------------
     def _sections(self, only=None, labels: dict | None = None) -> None:
@@ -696,6 +731,10 @@ class DocxRenderer:
         p = self.d.get("personal") or {}
         exact = self.tpl == "exact"
         head = self.item_head_exact if exact else self.item_head
+        # Exact's export twin joins date ranges with a hyphen; every other
+        # template uses the en-dash date_span.
+        dates_of = (lambda s, e: " - ".join(x for x in (plain(s), plain(e)) if x)) \
+            if exact else date_span
 
         if want("summary") and plain(p.get("summary")):
             self.heading(label("summary", "Summary"))
@@ -707,7 +746,7 @@ class DocxRenderer:
             self.heading(label("experience", "Experience"))
             for e in exp:
                 head(join_dash(e.get("role"), e.get("employer")),
-                     date_span(e.get("start"), e.get("end")))
+                     dates_of(e.get("start"), e.get("end")))
                 self.bullets(e.get("bullets"))
 
         edu = [e for e in (d.get("education") or [])
@@ -716,7 +755,7 @@ class DocxRenderer:
             self.heading(label("education", "Education"))
             for e in edu:
                 head(join_dash(e.get("qualification"), e.get("school")),
-                     date_span(e.get("start"), e.get("end")))
+                     dates_of(e.get("start"), e.get("end")))
 
         if want("skills") and split_lines(d.get("skills")) and not exact:
             self.heading(label("skills", "Skills"))
@@ -735,6 +774,16 @@ class DocxRenderer:
         if want("referees") and refs:
             self.heading(label("referees", "Referees"))
             for r in refs:
+                if exact:
+                    # Export twin keeps each referee on one line:
+                    # "Name, Title — Phone".
+                    line = plain(r.get("name"))
+                    if plain(r.get("title")):
+                        line += ", " + plain(r.get("title"))
+                    if plain(r.get("phone")):
+                        line += " — " + plain(r.get("phone"))
+                    self.text(line, space_after=2)
+                    continue
                 self.text(join_dash(r.get("name"), r.get("title")), space_after=0)
                 if plain(r.get("phone")):
                     self.text(r.get("phone"), size=self.size * 0.9,
