@@ -1,6 +1,6 @@
 # Pricing & monetization
 
-Status: approved for Phase 1 · Owner: Mwandishi team · Updated: 9 October 2026
+Status: approved for Phase 1 (execution pending) · Owner: Mwandishi team · Updated: 9 October 2026
 
 Side-income model. Core stays free forever (Graduate template, basic PDF,
 a few AI drafts a day); power features are one-time M-Pesa unlocks.
@@ -16,6 +16,9 @@ the privacy story is the moat.
 
 Constants: `PRICE_CLINICAL` / `PRICE_EXACT` in `frontend/src/lib/store.js`.
 Change the two numbers and the paywall UI plus backend validation follow.
+**These constants are the only place amounts live**: FAQ, Terms, paywall
+and inbox copy all say "one-time fee, price shown in the app" and never
+hardcode a figure — so a future price change touches code, not copy.
 Free quota that stays free: 3 AI actions/day, 3 exports per CV, all other
 templates, cover-letter writing.
 
@@ -68,8 +71,16 @@ known edge cases (manual receipt-SMS support as fallback).
 
 ## Legal prerequisites (with the build)
 
-- Terms `tm.s2` ("free of charge") gains a paid-tier clause.
-- Privacy gains the payments paragraph above.
+- Terms `tm.s2` ("free of charge") gains a paid-tier clause (generic
+  wording, no amounts); `tm.intro` softens "the free AI writing tool".
+- Homepage stays free-focused: no Pro teaser strip (decision 9 Oct).
+  Pro is disclosed on `/templates` cards, the paywall modal, and a
+  rewritten `lp.q1/lp.a1` FAQ answer ("one-time fee, price shown in the
+  app", no subscriptions, no watermark ever); `tpl.sub` becomes
+  "Four free designs, two Pro designs." Meta descriptions qualify to
+  "Free core: …".
+- Privacy gains the payments paragraph above, plus a `pv.s7l3` reword
+  (provider-handled checkout).
 - Both locales (EN + SW), date bump, `npm test` key-parity stays green.
 - Mobile-money income needs a registered business + TRA compliance once
   real money flows — confirm with a local accountant before launch.
