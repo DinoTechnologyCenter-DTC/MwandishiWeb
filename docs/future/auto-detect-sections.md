@@ -69,7 +69,7 @@ on `/[\n,]+/`). Detect on top of that split:
 Experience (achievement bullets starting with weak verbs → stronger verb
 suggestions; date overlaps between jobs), Referees (phone normalisation
 already exists — extend to missing title), Summary (length + keyword mirror
-of target job), Photo (face Beblur/brightness hint — local canvas only).
+of target job), Photo (blur/brightness hint — local canvas only).
 
 ## Where it hooks in (no refactor needed)
 
